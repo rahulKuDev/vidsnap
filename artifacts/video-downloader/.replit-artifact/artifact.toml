@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "VidSnap - Universal Video Downloader"
+version = "1.0.0"
+id = "artifacts/video-downloader"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21720
+
+[services.development]
+run = "pnpm --filter @workspace/video-downloader run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/video-downloader", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/video-downloader/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21720"
+BASE_PATH = "/"

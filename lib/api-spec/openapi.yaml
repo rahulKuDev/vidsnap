@@ -1,0 +1,435 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: VidSnap Video Downloader API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: video
+    description: Video download and processing operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /video/analyze:
+    post:
+      operationId: analyzeVideo
+      tags: [video]
+      summary: Analyze a video URL
+      description: Analyzes a video URL and returns available formats, qualities, and metadata
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeInput"
+      responses:
+        "200":
+          description: Video analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoInfo"
+        "400":
+          description: Invalid URL or unsupported platform
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "500":
+          description: Analysis failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /video/download:
+    post:
+      operationId: startDownload
+      tags: [video]
+      summary: Start a download job
+      description: Initiates a background download job for a video
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DownloadInput"
+      responses:
+        "202":
+          description: Download job started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /video/jobs/{jobId}:
+    get:
+      operationId: getJobStatus
+      tags: [video]
+      summary: Get download job status
+      description: Returns current status and progress of a download job
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Job status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /video/history:
+    get:
+      operationId: getDownloadHistory
+      tags: [video]
+      summary: Get recent download history
+      description: Returns recent downloads with their status
+      responses:
+        "200":
+          description: Download history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DownloadJob"
+
+  /video/edit:
+    post:
+      operationId: editVideo
+      tags: [video]
+      summary: Edit a downloaded video
+      description: Apply edits to a downloaded video (trim, remove watermark, convert format)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EditInput"
+      responses:
+        "202":
+          description: Edit job started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DownloadJob"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "404":
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /video/platforms:
+    get:
+      operationId: getSupportedPlatforms
+      tags: [video]
+      summary: Get supported platforms
+      description: Returns a list of supported video platforms
+      responses:
+        "200":
+          description: Platform list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlatformList"
+
+  /video/file/{filename}:
+    get:
+      operationId: downloadFile
+      tags: [video]
+      summary: Download the processed video file
+      description: Serves the downloaded/processed video file for client download
+      parameters:
+        - name: filename
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Video file stream
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    AnalyzeInput:
+      type: object
+      properties:
+        url:
+          type: string
+          description: Video URL to analyze
+      required:
+        - url
+
+    VideoFormat:
+      type: object
+      properties:
+        formatId:
+          type: string
+        quality:
+          type: string
+          description: "e.g. 4K, 2K, 1080p, 720p, 480p, 360p, audio-only"
+        resolution:
+          type: ["string", "null"]
+          description: "e.g. 3840x2160"
+        ext:
+          type: string
+          description: "e.g. mp4, webm, m4a, mp3"
+        filesize:
+          type: ["integer", "null"]
+          description: Estimated file size in bytes
+        hasAudio:
+          type: boolean
+        hasVideo:
+          type: boolean
+        fps:
+          type: ["number", "null"]
+        vcodec:
+          type: ["string", "null"]
+        acodec:
+          type: ["string", "null"]
+      required:
+        - formatId
+        - quality
+        - ext
+        - hasAudio
+        - hasVideo
+
+    VideoInfo:
+      type: object
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        thumbnail:
+          type: ["string", "null"]
+        duration:
+          type: ["number", "null"]
+          description: Duration in seconds
+        platform:
+          type: string
+          description: "e.g. YouTube, TikTok, Facebook"
+        uploader:
+          type: ["string", "null"]
+        viewCount:
+          type: ["integer", "null"]
+        description:
+          type: ["string", "null"]
+        formats:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoFormat"
+      required:
+        - url
+        - title
+        - platform
+        - formats
+
+    DownloadInput:
+      type: object
+      properties:
+        url:
+          type: string
+        formatId:
+          type: string
+          description: Format ID from analyzeVideo response
+        outputFormat:
+          type: string
+          enum: [mp4, mp3, webm, m4a]
+          description: "Desired output: mp4, mp3, webm"
+        quality:
+          type: string
+          description: "Quality label e.g. 1080p, 720p, best"
+        removeWatermark:
+          type: boolean
+          description: Attempt to remove watermark (TikTok etc.)
+        title:
+          type: string
+          description: Video title from analyze step
+        thumbnail:
+          type: string
+          description: Thumbnail URL from analyze step
+        platform:
+          type: string
+          description: Platform name from analyze step
+      required:
+        - url
+        - outputFormat
+
+    EditInput:
+      type: object
+      properties:
+        jobId:
+          type: string
+          description: ID of a completed download job to edit
+        trimStart:
+          type: ["number", "null"]
+          description: Start time in seconds for trim
+        trimEnd:
+          type: ["number", "null"]
+          description: End time in seconds for trim
+        removeWatermark:
+          type: boolean
+          description: Attempt to remove watermark
+        outputFormat:
+          type: string
+          enum: [mp4, mp3, webm, m4a]
+        speed:
+          type: ["number", "null"]
+          minimum: 0.25
+          maximum: 4
+          description: Playback speed multiplier (0.25-4)
+        muteAudio:
+          type: ["boolean", "null"]
+          description: Remove audio track from output
+        volume:
+          type: ["number", "null"]
+          minimum: 0
+          maximum: 300
+          description: Volume percentage (0-300)
+        voiceEffect:
+          type: ["string", "null"]
+          enum: [normal, chipmunk, deep, robot, echo, telephone]
+          description: AI voice effect preset
+      required:
+        - jobId
+
+    DownloadJob:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+        title:
+          type: ["string", "null"]
+        thumbnail:
+          type: ["string", "null"]
+        platform:
+          type: ["string", "null"]
+        outputFormat:
+          type: string
+        quality:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, downloading, processing, done, error]
+        progress:
+          type: integer
+          description: Progress 0-100
+        filename:
+          type: ["string", "null"]
+          description: Filename to use with /video/file/{filename}
+        filesize:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - url
+        - outputFormat
+        - status
+        - progress
+        - createdAt
+        - updatedAt
+
+    PlatformList:
+      type: object
+      properties:
+        platforms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Platform"
+      required:
+        - platforms
+
+    Platform:
+      type: object
+      properties:
+        name:
+          type: string
+        domain:
+          type: string
+        icon:
+          type: string
+        supported:
+          type: boolean
+      required:
+        - name
+        - domain
+        - icon
+        - supported

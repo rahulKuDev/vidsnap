@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VidSnap Admin Panel</title>
+<style>
+  :root {
+    --bg: #0a0a14; --card: #12121e; --border: rgba(255,255,255,0.08);
+    --text: #fff; --muted: rgba(255,255,255,0.5); --faint: rgba(255,255,255,0.12);
+    --violet: #7c3aed; --violet-light: #a78bfa; --blue: #2563eb;
+    --emerald: #10b981; --red: #ef4444; --orange: #f97316;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  #login-screen {
+    display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    background: radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.2) 0%, transparent 60%);
+  }
+  .login-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px;
+    padding: 40px; width: 380px; box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+  }
+  .brand { text-align: center; margin-bottom: 28px; }
+  .brand-icon { width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg,var(--violet),var(--blue)); display: flex; align-items: center; justify-content: center; font-size: 22px; margin: 0 auto 12px; }
+  .brand h1 { font-size: 22px; font-weight: 900; }
+  .brand p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .form-group input { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; font-size: 14px; color: var(--text); outline: none; transition: border .2s; }
+  .form-group input:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgba(124,58,237,0.15); }
+  .btn-primary { width: 100%; padding: 12px; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; background: linear-gradient(135deg,var(--violet),var(--blue)); color: #fff; transition: opacity .2s; margin-top: 8px; }
+  .btn-primary:hover { opacity: .88; }
+  .login-error { color: var(--red); font-size: 13px; text-align: center; margin-top: 10px; }
+
+  /* MAIN LAYOUT */
+  #app { display: none; min-height: 100vh; }
+  .sidebar { width: 220px; background: var(--card); border-right: 1px solid var(--border); min-height: 100vh; position: fixed; top: 0; left: 0; z-index: 10; display: flex; flex-direction: column; }
+  .sidebar-brand { padding: 20px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .sidebar-brand .icon { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg,var(--violet),var(--blue)); display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .sidebar-brand span { font-weight: 900; font-size: 16px; }
+  .sidebar-brand small { color: var(--violet-light); font-size: 10px; font-weight: 600; display: block; }
+  nav.sidebar-nav { padding: 12px 8px; flex: 1; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); transition: all .2s; margin-bottom: 2px; }
+  .nav-item:hover { background: var(--faint); color: var(--text); }
+  .nav-item.active { background: rgba(124,58,237,0.15); color: var(--violet-light); font-weight: 700; }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer { padding: 16px; border-top: 1px solid var(--border); }
+  .user-info { display: flex; align-items: center; gap: 10px; }
+  .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,var(--violet),var(--blue)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-email { font-size: 11px; color: var(--muted); }
+  .logout-btn { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--muted); font-size: 18px; transition: color .2s; }
+  .logout-btn:hover { color: var(--red); }
+
+  .main { margin-left: 220px; padding: 28px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 22px; font-weight: 900; margin-bottom: 6px; }
+  .page-desc { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; }
+  .stat-icon { font-size: 24px; margin-bottom: 12px; }
+  .stat-value { font-size: 32px; font-weight: 900; }
+  .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+  .stat-card::before { content: ''; position: absolute; top: 0; right: 0; width: 80px; height: 80px; border-radius: 50%; filter: blur(30px); opacity: .4; }
+  .stat-card.violet::before { background: var(--violet); }
+  .stat-card.blue::before { background: var(--blue); }
+  .stat-card.emerald::before { background: var(--emerald); }
+  .stat-card.red::before { background: var(--red); }
+
+  /* TABLE */
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 24px; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .table-title { font-size: 15px; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; }
+  th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; background: rgba(0,0,0,0.2); }
+  td { padding: 12px 16px; font-size: 13px; border-top: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-open { background: rgba(239,68,68,.15); color: var(--red); }
+  .badge-in_progress { background: rgba(249,115,22,.15); color: var(--orange); }
+  .badge-resolved { background: rgba(16,185,129,.15); color: var(--emerald); }
+  .badge-closed { background: rgba(255,255,255,.05); color: var(--muted); }
+  .badge-done { background: rgba(16,185,129,.15); color: var(--emerald); }
+  .badge-error { background: rgba(239,68,68,.15); color: var(--red); }
+  .badge-processing { background: rgba(124,58,237,.15); color: var(--violet-light); }
+  .badge-pending { background: rgba(249,115,22,.15); color: var(--orange); }
+  .badge-admin { background: rgba(124,58,237,.2); color: var(--violet-light); }
+  .badge-user { background: rgba(255,255,255,.07); color: var(--muted); }
+
+  /* BUTTONS */
+  .btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--faint); color: var(--text); transition: all .2s; }
+  .btn:hover { background: rgba(255,255,255,0.12); }
+  .btn-danger { border-color: rgba(239,68,68,.3); color: var(--red); }
+  .btn-danger:hover { background: rgba(239,68,68,.1); }
+  .btn-success { border-color: rgba(16,185,129,.3); color: var(--emerald); }
+  .btn-success:hover { background: rgba(16,185,129,.1); }
+  .btn-primary-sm { background: linear-gradient(135deg,var(--violet),var(--blue)); border-color: transparent; color: #fff; }
+  .btn-primary-sm:hover { opacity: .85; }
+
+  /* REFRESH BTN */
+  .refresh-btn { background: var(--faint); border: 1px solid var(--border); border-radius: 10px; padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text); transition: all .2s; }
+  .refresh-btn:hover { background: rgba(124,58,237,0.2); border-color: var(--violet); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 500px; max-width: 95vw; }
+  .modal h3 { font-size: 17px; font-weight: 800; margin-bottom: 16px; }
+  .modal textarea, .modal select { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--text); outline: none; resize: vertical; margin-bottom: 12px; font-family: inherit; }
+  .modal textarea:focus, .modal select:focus { border-color: var(--violet); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; }
+
+  /* SPINNER */
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--violet); border-radius: 50%; animation: spin .7s linear infinite; margin: 40px auto; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 48px; color: var(--muted); }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ERROR DETAIL */
+  .error-stack { font-family: monospace; font-size: 11px; color: var(--orange); background: rgba(249,115,22,.05); border: 1px solid rgba(249,115,22,.15); border-radius: 8px; padding: 10px; max-height: 120px; overflow-y: auto; word-break: break-all; white-space: pre-wrap; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 24px; right: 24px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-size: 13px; font-weight: 600; z-index: 200; transform: translateY(100px); transition: transform .3s; box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+  #toast.show { transform: translateY(0); }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 60px; }
+    .sidebar-brand span, .sidebar-brand small, .nav-item span, .user-name, .user-email { display: none; }
+    .main { margin-left: 60px; padding: 16px; }
+    .stats-grid { grid-template-columns: repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="brand">
+      <div class="brand-icon">▶</div>
+      <h1>VidSnap <span style="color:var(--violet-light)">Admin</span></h1>
+      <p>Sign in to manage your VidSnap instance</p>
+    </div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="admin@example.com" />
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Sign In as Admin</button>
+    <div class="login-error" id="login-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="icon">▶</div>
+      <div>
+        <span>VidSnap</span>
+        <small>Admin Panel</small>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard"><span class="icon">📊</span><span>Dashboard</span></div>
+      <div class="nav-item" onclick="showPage('users')" id="nav-users"><span class="icon">👥</span><span>Users</span></div>
+      <div class="nav-item" onclick="showPage('feedback')" id="nav-feedback"><span class="icon">🎫</span><span>Feedback & Help</span></div>
+      <div class="nav-item" onclick="showPage('errors')" id="nav-errors"><span class="icon">🔴</span><span>Error Log</span></div>
+      <div class="nav-item" onclick="showPage('downloads')" id="nav-downloads"><span class="icon">⬇️</span><span>Downloads</span></div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-info">
+        <div class="user-avatar" id="sidebar-avatar">A</div>
+        <div>
+          <div class="user-name" id="sidebar-name">Admin</div>
+          <div class="user-email" id="sidebar-email">—</div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="Sign out">↩</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-desc">VidSnap overview — refreshes every 15 seconds</div>
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card violet"><div class="stat-icon">👥</div><div class="stat-value" id="stat-users">—</div><div class="stat-label">Total Users</div></div>
+        <div class="stat-card blue"><div class="stat-icon">⬇️</div><div class="stat-value" id="stat-downloads">—</div><div class="stat-label">Downloads</div></div>
+        <div class="stat-card red"><div class="stat-icon">🔴</div><div class="stat-value" id="stat-errors">—</div><div class="stat-label">Errors Today</div></div>
+        <div class="stat-card emerald"><div class="stat-icon">🎫</div><div class="stat-value" id="stat-tickets">—</div><div class="stat-label">Open Tickets</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="table-card">
+          <div class="table-header"><span class="table-title">Recent Errors</span><button class="refresh-btn" onclick="loadStats()">↻ Refresh</button></div>
+          <div id="dash-errors"><div class="spinner"></div></div>
+        </div>
+        <div class="table-card">
+          <div class="table-header"><span class="table-title">Active Downloads</span></div>
+          <div id="dash-downloads"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- USERS -->
+    <div class="page" id="page-users">
+      <div class="page-title">Users</div>
+      <div class="page-desc">Manage registered accounts</div>
+      <div class="table-card">
+        <div class="table-header"><span class="table-title">All Users</span><button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button></div>
+        <div id="users-table"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- FEEDBACK -->
+    <div class="page" id="page-feedback">
+      <div class="page-title">Feedback & Help Tickets</div>
+      <div class="page-desc">Review and respond to user submissions</div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;" id="feedback-filter">
+        <button class="btn btn-primary-sm" onclick="filterFeedback('all')">All</button>
+        <button class="btn" onclick="filterFeedback('open')">Open</button>
+        <button class="btn" onclick="filterFeedback('in_progress')">In Progress</button>
+        <button class="btn" onclick="filterFeedback('resolved')">Resolved</button>
+      </div>
+      <div class="table-card">
+        <div class="table-header"><span class="table-title">Submissions</span><button class="refresh-btn" onclick="loadFeedback()">↻ Refresh</button></div>
+        <div id="feedback-table"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- ERRORS -->
+    <div class="page" id="page-errors">
+      <div class="page-title">Error Log</div>
+      <div class="page-desc">Real-time error reports from frontend & backend — polling every 10s</div>
+      <div class="table-card">
+        <div class="table-header"><span class="table-title">Recent Errors (last 100)</span><button class="refresh-btn" onclick="loadErrors()">↻ Refresh</button></div>
+        <div id="errors-table"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- DOWNLOADS -->
+    <div class="page" id="page-downloads">
+      <div class="page-title">Download Activity</div>
+      <div class="page-desc">All download jobs and their status</div>
+      <div class="table-card">
+        <div class="table-header"><span class="table-title">All Jobs</span><button class="refresh-btn" onclick="loadDownloads()">↻ Refresh</button></div>
+        <div id="downloads-table"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FEEDBACK REPLY MODAL -->
+<div class="modal-overlay" id="reply-modal">
+  <div class="modal">
+    <h3>Respond to Ticket #<span id="modal-ticket-id"></span></h3>
+    <div style="margin-bottom:12px;font-size:13px;color:var(--muted);" id="modal-ticket-subject"></div>
+    <div style="margin-bottom:12px;font-size:13px;background:rgba(0,0,0,.3);border-radius:8px;padding:12px;" id="modal-ticket-msg"></div>
+    <select id="modal-status">
+      <option value="open">Open</option>
+      <option value="in_progress">In Progress</option>
+      <option value="resolved">Resolved</option>
+      <option value="closed">Closed</option>
+    </select>
+    <textarea id="modal-reply" rows="4" placeholder="Admin reply (optional)…"></textarea>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary-sm" onclick="submitReply()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:3001/api';
+let token = localStorage.getItem('vs_admin_token');
+let currentTicketId = null;
+let allFeedback = [];
+let pollInterval = null;
+
+// ─── AUTH ──────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  try {
+    const r = await fetch(`${API}/auth/login`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Login failed');
+    if (d.user.role !== 'admin') throw new Error('Admin access required');
+    token = d.token;
+    localStorage.setItem('vs_admin_token', token);
+    localStorage.setItem('vs_admin_user', JSON.stringify(d.user));
+    initApp(d.user);
+  } catch(e) { errEl.textContent = e.message; }
+}
+
+function doLogout() {
+  token = null;
+  localStorage.removeItem('vs_admin_token');
+  localStorage.removeItem('vs_admin_user');
+  clearInterval(pollInterval);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+}
+
+// ─── APP INIT ─────────────────────────────────────────────────────────────────
+function initApp(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('sidebar-name').textContent = user.name;
+  document.getElementById('sidebar-email').textContent = user.email;
+  document.getElementById('sidebar-avatar').textContent = user.name[0].toUpperCase();
+  showPage('dashboard');
+  pollInterval = setInterval(() => { loadStats(); if (document.getElementById('page-errors').classList.contains('active')) loadErrors(); }, 10000);
+}
+
+// Auto-restore session
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('vs_admin_user');
+  if (token && saved) {
+    try { initApp(JSON.parse(saved)); } catch { doLogout(); }
+  }
+});
+
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'dashboard') { loadStats(); loadDashErrors(); loadDashDownloads(); }
+  else if (name === 'users') loadUsers();
+  else if (name === 'feedback') loadFeedback();
+  else if (name === 'errors') loadErrors();
+  else if (name === 'downloads') loadDownloads();
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function badge(cls, text) { return `<span class="badge badge-${cls}">${text}</span>`; }
+function timeAgo(iso) {
+  const d = new Date(iso), now = Date.now(), diff = now - d.getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  return Math.floor(diff/86400000) + 'd ago';
+}
+function showToast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = ok ? 'rgba(16,185,129,.3)' : 'rgba(239,68,68,.3)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+function fmtBytes(b) {
+  if (!b) return '—';
+  if (b < 1024) return b + 'B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + 'KB';
+  return (b/1024/1024).toFixed(1) + 'MB';
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await fetch(`${API}/admin/stats`, { headers: authHeaders() });
+    const d = await r.json();
+    document.getElementById('stat-users').textContent = d.users ?? '—';
+    document.getElementById('stat-downloads').textContent = d.downloads ?? '—';
+    document.getElementById('stat-errors').textContent = d.errorsToday ?? '—';
+    document.getElementById('stat-tickets').textContent = d.openTickets ?? '—';
+  } catch {}
+}
+
+async function loadDashErrors() {
+  const el = document.getElementById('dash-errors');
+  try {
+    const r = await fetch(`${API}/admin/errors?limit=5`, { headers: authHeaders() });
+    const rows = await r.json();
+    if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">✅</div>No errors logged</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>Source</th><th>Message</th><th>Time</th></tr></thead><tbody>${
+      rows.map(e => `<tr><td>${badge(e.source==='frontend'?'pending':'error', e.source)}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(e.message)}</td><td style="white-space:nowrap;color:var(--muted)">${timeAgo(e.createdAt)}</td></tr>`).join('')
+    }</tbody></table>`;
+  } catch(e) { el.innerHTML = '<div class="empty-state">Failed to load</div>'; }
+}
+
+async function loadDashDownloads() {
+  const el = document.getElementById('dash-downloads');
+  try {
+    const r = await fetch(`${API}/admin/downloads`, { headers: authHeaders() });
+    const rows = (await r.json()).filter(j => j.status === 'processing' || j.status === 'error').slice(0,5);
+    if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">💤</div>No active downloads</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>Platform</th><th>Status</th><th>Progress</th></tr></thead><tbody>${
+      rows.map(j => `<tr><td>${j.platform||'—'}</td><td>${badge(j.status, j.status)}</td><td>${j.progress}%</td></tr>`).join('')
+    }</tbody></table>`;
+  } catch { el.innerHTML = '<div class="empty-state">Failed to load</div>'; }
+}
+
+// ─── USERS ────────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const el = document.getElementById('users-table');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch(`${API}/admin/users`, { headers: authHeaders() });
+    const users = await r.json();
+    if (!users.length) { el.innerHTML = '<div class="empty-state"><div class="icon">👥</div>No users yet</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead><tbody>${
+      users.map(u => `<tr>
+        <td style="color:var(--muted)">${u.id}</td>
+        <td><strong>${escHtml(u.name)}</strong></td>
+        <td style="color:var(--muted)">${escHtml(u.email)}</td>
+        <td>${badge(u.role, u.role)}</td>
+        <td>${u.isBanned ? badge('error','Banned') : u.isVerified ? badge('resolved','Verified') : badge('pending','Unverified')}</td>
+        <td style="color:var(--muted);white-space:nowrap">${timeAgo(u.createdAt)}</td>
+        <td>
+          ${u.isBanned
+            ? `<button class="btn btn-success" onclick="banUser(${u.id},false)">Unban</button>`
+            : `<button class="btn btn-danger" onclick="banUser(${u.id},true)">Ban</button>`}
+        </td>
+      </tr>`).join('')
+    }</tbody></table>`;
+  } catch { el.innerHTML = '<div class="empty-state">Failed to load</div>'; }
+}
+
+async function banUser(id, ban) {
+  const reason = ban ? prompt('Ban reason (optional):') ?? '' : '';
+  try {
+    const r = await fetch(`${API}/admin/users/${id}/ban`, {
+      method:'PATCH', headers: authHeaders(),
+      body: JSON.stringify({banned: ban, reason})
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    showToast(ban ? 'User banned' : 'User unbanned');
+    loadUsers();
+  } catch(e) { showToast(e.message, false); }
+}
+
+// ─── FEEDBACK ─────────────────────────────────────────────────────────────────
+let feedbackFilter = 'all';
+function filterFeedback(f) { feedbackFilter = f; renderFeedback(); }
+
+async function loadFeedback() {
+  document.getElementById('feedback-table').innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch(`${API}/admin/feedback`, { headers: authHeaders() });
+    allFeedback = await r.json();
+    renderFeedback();
+  } catch { document.getElementById('feedback-table').innerHTML = '<div class="empty-state">Failed to load</div>'; }
+}
+
+function renderFeedback() {
+  const el = document.getElementById('feedback-table');
+  const rows = feedbackFilter === 'all' ? allFeedback : allFeedback.filter(f => f.status === feedbackFilter);
+  if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">🎫</div>No feedback yet</div>'; return; }
+  const typeIcon = {help:'🐛', feedback:'💬', feature:'✨'};
+  el.innerHTML = `<table><thead><tr><th>#</th><th>Type</th><th>Subject</th><th>Platform</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead><tbody>${
+    rows.map(f => `<tr>
+      <td style="color:var(--muted)">${f.id}</td>
+      <td>${typeIcon[f.type]||'?'} ${f.type}</td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(f.subject)}">${escHtml(f.subject)}</td>
+      <td style="color:var(--muted)">${f.platform||'—'}</td>
+      <td>${badge(f.status, f.status.replace('_',' '))}</td>
+      <td style="color:var(--muted);white-space:nowrap">${timeAgo(f.createdAt)}</td>
+      <td><button class="btn btn-primary-sm" onclick="openReply(${f.id})">Reply</button></td>
+    </tr>`).join('')
+  }</tbody></table>`;
+}
+
+function openReply(id) {
+  const f = allFeedback.find(x => x.id === id);
+  if (!f) return;
+  currentTicketId = id;
+  document.getElementById('modal-ticket-id').textContent = id;
+  document.getElementById('modal-ticket-subject').textContent = f.subject;
+  document.getElementById('modal-ticket-msg').textContent = f.message;
+  document.getElementById('modal-status').value = f.status;
+  document.getElementById('modal-reply').value = f.adminReply || '';
+  document.getElementById('reply-modal').classList.add('open');
+}
+function closeModal() { document.getElementById('reply-modal').classList.remove('open'); }
+
+async function submitReply() {
+  const status = document.getElementById('modal-status').value;
+  const adminReply = document.getElementById('modal-reply').value;
+  try {
+    const r = await fetch(`${API}/admin/feedback/${currentTicketId}`, {
+      method:'PATCH', headers: authHeaders(), body: JSON.stringify({status, adminReply})
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    showToast('Ticket updated!');
+    closeModal();
+    loadFeedback();
+  } catch(e) { showToast(e.message, false); }
+}
+
+// ─── ERRORS ───────────────────────────────────────────────────────────────────
+async function loadErrors() {
+  const el = document.getElementById('errors-table');
+  try {
+    const r = await fetch(`${API}/admin/errors?limit=100`, { headers: authHeaders() });
+    const rows = await r.json();
+    if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">✅</div>No errors logged — great!</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>ID</th><th>Source</th><th>Platform</th><th>Type</th><th>Message</th><th>Stack</th><th>Time</th></tr></thead><tbody>${
+      rows.map(e => `<tr>
+        <td style="color:var(--muted)">${e.id}</td>
+        <td>${badge(e.source==='frontend'?'pending':e.source==='download'?'error':'closed', e.source)}</td>
+        <td style="color:var(--muted)">${e.platform||'—'}</td>
+        <td style="color:var(--muted);font-size:11px">${e.errorType||'—'}</td>
+        <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(e.message)}">${escHtml(e.message)}</td>
+        <td>${e.stack ? `<div class="error-stack">${escHtml(e.stack.slice(0,200))}</div>` : '—'}</td>
+        <td style="color:var(--muted);white-space:nowrap">${timeAgo(e.createdAt)}</td>
+      </tr>`).join('')
+    }</tbody></table>`;
+  } catch { el.innerHTML = '<div class="empty-state">Failed to load</div>'; }
+}
+
+// ─── DOWNLOADS ────────────────────────────────────────────────────────────────
+async function loadDownloads() {
+  const el = document.getElementById('downloads-table');
+  el.innerHTML = '<div class="spinner"></div>';
+  try {
+    const r = await fetch(`${API}/admin/downloads`, { headers: authHeaders() });
+    const rows = await r.json();
+    if (!rows.length) { el.innerHTML = '<div class="empty-state"><div class="icon">⬇️</div>No downloads yet</div>'; return; }
+    el.innerHTML = `<table><thead><tr><th>ID</th><th>Platform</th><th>Title</th><th>Format</th><th>Status</th><th>Progress</th><th>Size</th><th>Error</th></tr></thead><tbody>${
+      rows.map(j => `<tr>
+        <td style="color:var(--muted);font-size:11px;font-family:monospace">${j.id.slice(0,8)}</td>
+        <td>${j.platform||'—'}</td>
+        <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escHtml(j.title||'')}"><a href="${escHtml(j.url)}" target="_blank" style="color:var(--violet-light);text-decoration:none">${escHtml(j.title||j.url.slice(0,40))}</a></td>
+        <td style="font-family:monospace;font-size:11px">${j.outputFormat||'—'}</td>
+        <td>${badge(j.status, j.status)}</td>
+        <td><div style="width:60px;height:6px;background:var(--faint);border-radius:4px;overflow:hidden"><div style="height:100%;width:${j.progress}%;background:linear-gradient(90deg,var(--violet),var(--blue))"></div></div><span style="font-size:11px;color:var(--muted)">${j.progress}%</span></td>
+        <td style="color:var(--muted)">${fmtBytes(j.filesize)}</td>
+        <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--red);font-size:11px" title="${escHtml(j.errorMessage||'')}">${j.errorMessage||'—'}</td>
+      </tr>`).join('')
+    }</tbody></table>`;
+  } catch { el.innerHTML = '<div class="empty-state">Failed to load</div>'; }
+}
+
+function escHtml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modal on backdrop click
+document.getElementById('reply-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+</script>
+</body>
+</html>
