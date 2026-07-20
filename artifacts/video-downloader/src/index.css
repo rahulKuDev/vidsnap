@@ -220,7 +220,112 @@
 
   /* ─── Page bottom spacing so content isn't hidden under sticky bar ─── */
   .pb-bar-safe {
-    /* 80px bar + safe area bottom */
     padding-bottom: max(5rem, env(safe-area-inset-bottom, 0px) + 5rem);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MOBILE AUTO-FIX — these apply on ALL small screens automatically
+   No JavaScript needed — pure CSS media queries
+═══════════════════════════════════════════════════════════════════════ */
+
+/* iOS Safari: prevent auto-zoom on input focus (font-size must be >= 16px) */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Bigger tap targets on touch screens */
+  button {
+    min-height: 44px;
+  }
+
+  /* Safe area padding for notch phones (iPhone X+, Android notch) */
+  body {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}
+
+/* Desktop — restore normal font sizing */
+@media (min-width: 768px) {
+  input,
+  select,
+  textarea {
+    font-size: inherit;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   BACKGROUND ORB ANIMATIONS — auto-play, CSS-only
+═══════════════════════════════════════════════════════════════════════ */
+@keyframes orbFloat1 {
+  0%   { transform: translate(0, 0) scale(1); }
+  25%  { transform: translate(4%, -6%) scale(1.08); }
+  50%  { transform: translate(-3%, 4%) scale(0.95); }
+  75%  { transform: translate(5%, 3%) scale(1.05); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes orbFloat2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  33%  { transform: translate(-5%, 4%) scale(1.1); }
+  66%  { transform: translate(3%, -5%) scale(0.92); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+@keyframes orbFloat3 {
+  0%   { transform: translate(0, 0) scale(1); }
+  40%  { transform: translate(6%, -3%) scale(1.06); }
+  70%  { transform: translate(-4%, 6%) scale(0.96); }
+  100% { transform: translate(0, 0) scale(1); }
+}
+
+/* Glow pulse for hero logo */
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50%       { opacity: 1;   transform: scale(1.05); }
+}
+
+@keyframes vidsnapLogoAura {
+  0%   { transform: rotate(0deg) scale(0.98); }
+  50%  { transform: rotate(180deg) scale(1.08); }
+  100% { transform: rotate(360deg) scale(0.98); }
+}
+
+@keyframes vidsnapLogoFloat {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50%      { transform: translateY(-2px) scale(1.03); }
+}
+
+/* Animated gradient text — "Anything" hero word */
+.animated-gradient-text {
+  background: linear-gradient(
+    90deg,
+    #a78bfa 0%,
+    #60a5fa 25%,
+    #34d399 50%,
+    #f472b6 75%,
+    #a78bfa 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: gradientShift 4s linear infinite;
+}
+
+@keyframes gradientShift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* Floating background text direction keyframes */
+@keyframes floatLeft {
+  0%   { transform: translateX(110vw); }
+  100% { transform: translateX(-120%); }
+}
+@keyframes floatRight {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(110vw); }
 }

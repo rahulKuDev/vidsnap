@@ -237,9 +237,10 @@ function JobCard({ initialJob }: { initialJob: DownloadJob }) {
 }
 
 export default function HistoryPage() {
-  const { data: history, isLoading, refetch, isRefetching } = useGetDownloadHistory({
+  const { data: history, isLoading, isError, refetch, isRefetching } = useGetDownloadHistory({
     query: {
       queryKey: ["downloadHistory"],
+      retry: 1, // only retry once — don't hang forever if API is down
       // Only poll when there are active/pending jobs — avoids constant 5s hammering when idle
       refetchInterval: (query) => {
         const jobs = (query.state.data as DownloadJob[] | undefined) ?? [];
@@ -277,12 +278,12 @@ export default function HistoryPage() {
       </div>
 
       <div className="space-y-4">
-        {isLoading ? (
+        {isLoading && !isError ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
             <p>Loading history...</p>
           </div>
-        ) : !history || history.length === 0 ? (
+        ) : isError || !history || history.length === 0 ? (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

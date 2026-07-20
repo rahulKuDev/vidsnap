@@ -210,4 +210,45 @@ router.post("/auth/reset-password", async (req, res, next): Promise<void> => {
   } catch (err) { next(err); }
 });
 
+// ─── UPDATE PROFILE (name + avatar) ──────────────────────────────────────────
+router.patch("/auth/update-profile", requireAuth, async (req, res, next): Promise<void> => {
+  try {
+    const Body = z.object({
+      name: z.string().min(2).max(100).optional(),
+      avatarUrl: z.string().url().max(1000).nullable().optional(),
+    });
+    const parsed = Body.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }); return; }
+
+    const userId = req.user!.userId;
+    const { name, avatarUrl } = parsed.data;
+    stmts.updateUserProfile.run(name ?? null, avatarUrl ?? null, userId);
+    const updated = stmts.getUserById.get(userId)!;
+    res.json({ success: true, user: serializeUser(updated) });
+  } catch (err) { next(err); }
+});
+
+// ─── CHANGE PASSWORD ──────────────────────────────────────────────────────────
+router.post("/auth/change-password", requireAuth, async (req, res, next): Promise<void> => {
+  try {
+    const Body = z.object({
+      oldPassword: z.string().min(1),
+      newPassword: z.string().min(6, "New password must be at least 6 characters"),
+    });
+    const parsed = Body.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }); return; }
+
+    const userId = req.user!.userId;
+    const user = stmts.getUserById.get(userId);
+    if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+    const valid = await bcrypt.compare(parsed.data.oldPassword, user.password_hash);
+    if (!valid) { res.status(401).json({ error: "Current password is incorrect" }); return; }
+
+    const newHash = await bcrypt.hash(parsed.data.newPassword, 12);
+    stmts.updateUserPasswordById.run(newHash, userId);
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 export default router;

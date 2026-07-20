@@ -1,6 +1,11 @@
-import { useState, useRef } from "react";
-import { motion } from "framer-motion";
-import { LifeBuoy, MessageSquare, Sparkles, Upload, X, Loader2, CheckCircle2, ChevronDown, AlertCircle } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  LifeBuoy, MessageSquare, Sparkles, Upload, X, Loader2,
+  CheckCircle2, ChevronDown, AlertCircle, ShieldCheck,
+  Users, Download, Activity, FileText, Ban, ChevronRight,
+  RefreshCw, BarChart2, AlertTriangle, Shield,
+} from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 import { toast } from "sonner";
 
@@ -13,8 +18,269 @@ const TYPES = [
   { id: "feature", label: "✨ Feature Request", desc: "Suggest a new feature or improvement" },
 ];
 
+// ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
+
+type AdminTab = "stats" | "users" | "tickets" | "errors";
+
+function AdminPanel({ token }: { token: string }) {
+  const [activeTab, setActiveTab] = useState<AdminTab>("stats");
+  const [stats, setStats] = useState<any>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [errors, setErrors] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [banReason, setBanReason] = useState<Record<number, string>>({});
+
+  const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  const fetchStats = async () => {
+    const r = await fetch(`${API}/admin/stats`, { headers: authHeaders });
+    setStats(await r.json());
+  };
+  const fetchUsers = async () => {
+    const r = await fetch(`${API}/admin/users`, { headers: authHeaders });
+    setUsers(await r.json());
+  };
+  const fetchTickets = async () => {
+    const r = await fetch(`${API}/admin/feedback`, { headers: authHeaders });
+    setTickets(await r.json());
+  };
+  const fetchErrors = async () => {
+    const r = await fetch(`${API}/admin/errors?limit=50`, { headers: authHeaders });
+    setErrors(await r.json());
+  };
+
+  const loadTab = async (tab: AdminTab) => {
+    setLoading(true);
+    try {
+      if (tab === "stats") await fetchStats();
+      else if (tab === "users") await fetchUsers();
+      else if (tab === "tickets") await fetchTickets();
+      else await fetchErrors();
+    } catch { toast.error("Failed to load data"); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { loadTab(activeTab); }, [activeTab]);
+
+  const handleBan = async (id: number, banned: boolean) => {
+    const reason = banned ? (banReason[id] || undefined) : undefined;
+    await fetch(`${API}/admin/users/${id}/ban`, {
+      method: "PATCH", headers: authHeaders,
+      body: JSON.stringify({ banned, reason }),
+    });
+    toast.success(banned ? "User banned" : "User unbanned");
+    fetchUsers();
+  };
+
+  const handleRole = async (id: number, role: "user" | "admin") => {
+    await fetch(`${API}/admin/users/${id}/role`, {
+      method: "PATCH", headers: authHeaders,
+      body: JSON.stringify({ role }),
+    });
+    toast.success(`Role changed to ${role}`);
+    fetchUsers();
+  };
+
+  const handleTicketStatus = async (id: number, status: string) => {
+    await fetch(`${API}/admin/feedback/${id}`, {
+      method: "PATCH", headers: authHeaders,
+      body: JSON.stringify({ status }),
+    });
+    toast.success("Status updated");
+    fetchTickets();
+  };
+
+  const TABS: { id: AdminTab; label: string; icon: any }[] = [
+    { id: "stats", label: "Stats", icon: BarChart2 },
+    { id: "users", label: "Users", icon: Users },
+    { id: "tickets", label: "Tickets", icon: FileText },
+    { id: "errors", label: "Errors", icon: AlertTriangle },
+  ];
+
+  const statusColors: Record<string, string> = {
+    open: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+    in_progress: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    resolved: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+    closed: "text-white/30 bg-white/5 border-white/10",
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl border border-violet-500/20 bg-violet-500/[0.04] backdrop-blur-xl overflow-hidden mb-8"
+    >
+      {/* Header */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] bg-violet-500/[0.06]">
+        <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center">
+          <Shield className="w-4.5 h-4.5 text-violet-400" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-white">Admin Panel</h2>
+          <p className="text-[11px] text-violet-300/60">Manage users, tickets, and system health</p>
+        </div>
+        <button onClick={() => loadTab(activeTab)} className="ml-auto text-white/30 hover:text-violet-400 transition-colors p-1.5 rounded-lg hover:bg-white/[0.05]">
+          <RefreshCw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 px-4 py-2.5 border-b border-white/[0.05] bg-black/20">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              activeTab === tab.id
+                ? "bg-violet-600 text-white shadow-lg"
+                : "text-white/40 hover:text-white/70 hover:bg-white/[0.05]"
+            }`}
+          >
+            <tab.icon className="w-3.5 h-3.5" />
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {loading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* ─── STATS ─── */}
+            {activeTab === "stats" && stats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Total Users", value: stats.users, icon: Users, color: "violet" },
+                  { label: "Downloads", value: stats.downloads, icon: Download, color: "blue" },
+                  { label: "Active Downloads", value: stats.activeDownloads, icon: Activity, color: "emerald" },
+                  { label: "Open Tickets", value: stats.openTickets, icon: FileText, color: "yellow" },
+                  { label: "Failed Downloads", value: stats.failedDownloads, icon: AlertCircle, color: "red" },
+                  { label: "Errors Today", value: stats.errorsToday, icon: AlertTriangle, color: "orange" },
+                  { label: "Total Errors", value: stats.errorsTotal, icon: AlertTriangle, color: "red" },
+                ].map((s, i) => (
+                  <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-3">
+                    <p className="text-[11px] text-white/35 mb-1">{s.label}</p>
+                    <p className="text-2xl font-black text-white">{s.value ?? 0}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ─── USERS ─── */}
+            {activeTab === "users" && (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {users.length === 0 && <p className="text-sm text-white/30 text-center py-6">No users found</p>}
+                {users.map(u => (
+                  <div key={u.id} className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border ${u.isBanned ? "border-red-500/20 bg-red-500/[0.05]" : "border-white/[0.06] bg-white/[0.02]"}`}>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                        {u.name[0].toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-sm font-semibold text-white truncate">{u.name}</p>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase ${u.role === "admin" ? "bg-violet-500/20 text-violet-300" : "bg-blue-500/20 text-blue-300"}`}>{u.role}</span>
+                          {u.isBanned && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase bg-red-500/20 text-red-300">Banned</span>}
+                        </div>
+                        <p className="text-[11px] text-white/30 truncate">{u.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* Role toggle */}
+                      <button
+                        onClick={() => handleRole(u.id, u.role === "admin" ? "user" : "admin")}
+                        className="text-[11px] px-2.5 py-1 rounded-lg border border-white/10 text-white/50 hover:border-violet-500/40 hover:text-violet-400 transition-all"
+                      >
+                        {u.role === "admin" ? "→ User" : "→ Admin"}
+                      </button>
+                      {/* Ban toggle */}
+                      <button
+                        onClick={() => handleBan(u.id, !u.isBanned)}
+                        className={`text-[11px] px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 ${
+                          u.isBanned
+                            ? "border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                            : "border-red-500/30 text-red-400 hover:bg-red-500/10"
+                        }`}
+                      >
+                        <Ban className="w-3 h-3" />
+                        {u.isBanned ? "Unban" : "Ban"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ─── TICKETS ─── */}
+            {activeTab === "tickets" && (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {tickets.length === 0 && <p className="text-sm text-white/30 text-center py-6">No tickets yet</p>}
+                {tickets.map(t => (
+                  <div key={t.id} className="p-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-white/[0.06] text-white/50">{t.type}</span>
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-full border ${statusColors[t.status] ?? statusColors.open}`}>{t.status?.replace("_", " ")}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-white truncate">{t.subject}</p>
+                        <p className="text-xs text-white/35 mt-0.5 line-clamp-1">{t.message}</p>
+                      </div>
+                      <p className="text-[10px] text-white/20 shrink-0">{new Date(t.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {["open", "in_progress", "resolved", "closed"].map(s => (
+                        <button
+                          key={s}
+                          onClick={() => handleTicketStatus(t.id, s)}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border transition-all ${
+                            t.status === s
+                              ? statusColors[s]
+                              : "border-white/[0.06] text-white/25 hover:text-white/50 hover:border-white/20"
+                          }`}
+                        >
+                          {s.replace("_", " ")}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* ─── ERRORS ─── */}
+            {activeTab === "errors" && (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {errors.length === 0 && <p className="text-sm text-white/30 text-center py-6">No errors logged</p>}
+                {errors.map(e => (
+                  <div key={e.id} className="p-3 rounded-xl border border-red-500/[0.1] bg-red-500/[0.03]">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-300">{e.source}</span>
+                      {e.errorType && <span className="text-[10px] text-white/25">{e.errorType}</span>}
+                      <span className="text-[10px] text-white/20 ml-auto">{new Date(e.createdAt).toLocaleString()}</span>
+                    </div>
+                    <p className="text-xs text-red-300/80 font-mono leading-relaxed line-clamp-2">{e.message}</p>
+                    {e.url && <p className="text-[10px] text-white/20 mt-1 truncate">{e.url}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ─── MAIN HELP PAGE ───────────────────────────────────────────────────────────
+
 export default function HelpPage() {
-  const { token } = useAuth();
+  const { token, isAdmin } = useAuth();
   const [type, setType] = useState("help");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -32,7 +298,6 @@ export default function HelpPage() {
     if (file.size > 10 * 1024 * 1024) { toast.error("Image too large (max 10 MB)"); return; }
     setUploading(true);
     try {
-      // Preview
       const reader = new FileReader();
       reader.onload = e => setImagePreview(e.target?.result as string);
       reader.readAsDataURL(file);
@@ -65,8 +330,7 @@ export default function HelpPage() {
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch(`${API}/feedback`, {
-        method: "POST",
-        headers,
+        method: "POST", headers,
         body: JSON.stringify({ type, subject, message, platform: platform || undefined, errorDetail: errorDetail || undefined, imageUrl: imageUrl ?? undefined }),
       });
       const data = await res.json();
@@ -87,7 +351,7 @@ export default function HelpPage() {
             <CheckCircle2 className="w-10 h-10 text-emerald-400" />
           </div>
           <h2 className="text-2xl font-bold text-white mb-3">Thank you! 🎉</h2>
-          <p className="text-muted-foreground mb-6">Your {type === "help" ? "bug report" : type === "feature" ? "feature request" : "feedback"} has been received. We'll review it and get back to you.</p>
+          <p className="text-muted-foreground mb-6">Your {type === "help" ? "bug report" : type === "feature" ? "feature request" : "feedback"} has been received. We'll review it shortly.</p>
           <button onClick={() => { setDone(false); setSubject(""); setMessage(""); setImageUrl(null); setImagePreview(null); setErrorDetail(""); setPlatform(""); }}
             className="bg-violet-600 hover:bg-violet-500 text-white px-6 py-2 rounded-xl font-semibold transition-colors">
             Submit Another
@@ -100,6 +364,11 @@ export default function HelpPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+
+        {/* ── ADMIN PANEL (admin only) ─────────────────────────────── */}
+        {isAdmin && token && <AdminPanel token={token} />}
+
+        {/* ── HELP FORM ────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 mb-6">
           <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center">
             <LifeBuoy className="w-5 h-5 text-violet-400" />
@@ -122,7 +391,7 @@ export default function HelpPage() {
             ))}
           </div>
 
-          {/* Platform (only for bugs) */}
+          {/* Platform (bugs only) */}
           {type === "help" && (
             <div>
               <label className="text-sm font-medium text-white mb-1.5 block">Platform (optional)</label>
@@ -153,7 +422,7 @@ export default function HelpPage() {
               className="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-violet-500 transition-all resize-none" />
           </div>
 
-          {/* Error detail (for bug reports) */}
+          {/* Error detail */}
           {type === "help" && (
             <div>
               <label className="text-sm font-medium text-white mb-1.5 flex items-center gap-1.5">
@@ -182,8 +451,7 @@ export default function HelpPage() {
                 )}
               </div>
             ) : (
-              <div
-                onDrop={handleDrop} onDragOver={e => e.preventDefault()}
+              <div onDrop={handleDrop} onDragOver={e => e.preventDefault()}
                 onClick={() => fileRef.current?.click()}
                 className="border-2 border-dashed border-white/10 hover:border-violet-500/50 rounded-xl p-8 text-center cursor-pointer transition-all group">
                 <Upload className="w-8 h-8 text-muted-foreground group-hover:text-violet-400 mx-auto mb-3 transition-colors" />

@@ -10,7 +10,7 @@ import {
   ChevronRight, Sparkles, Loader2, AlertCircle, CheckCircle2,
   FileVideo, FileAudio, Headphones, Zap, Shield, Globe, Info,
   ChevronDown, ChevronUp, Upload, Lock, Cookie, ExternalLink,
-  ArrowRight, Wand2, Eraser, Star, Layers,
+  ArrowRight, Wand2, Eraser, Star, Layers, Search, BookOpen,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -360,95 +360,170 @@ export default function Home() {
   const PLATFORM_PILLS = ["YouTube", "TikTok", "Instagram", "Facebook", "Twitter/X", "Vimeo", "Reddit", "Twitch", "+ 1000 more"];
 
   return (
-    <div className="max-w-5xl mx-auto flex flex-col gap-6 md:gap-8 pb-bar-safe px-0">
+    <div className="w-full flex flex-col gap-6 md:gap-10 pb-20 md:pb-28">
 
-      {/* ── Hero ────────────────────────────────────────────────────────────────── */}
-      <div className="text-center space-y-5 pt-10 pb-4">
+      {/* ══════════════════════════════════════════════════════════════════
+          ANIMATED BACKGROUND
+      ══════════════════════════════════════════════════════════════════ */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        {/* Animated gradient orbs */}
+        <div className="absolute top-[-20%] left-[10%] w-[500px] h-[500px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)", animation: "orbFloat1 12s ease-in-out infinite" }} />
+        <div className="absolute top-[20%] right-[-10%] w-[400px] h-[400px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)", animation: "orbFloat2 15s ease-in-out infinite" }} />
+        <div className="absolute bottom-[10%] left-[-5%] w-[350px] h-[350px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(236,72,153,0.1) 0%, transparent 70%)", animation: "orbFloat3 18s ease-in-out infinite" }} />
+        <div className="absolute top-[50%] left-[40%] w-[300px] h-[300px] rounded-full"
+          style={{ background: "radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%)", animation: "orbFloat1 20s ease-in-out infinite reverse" }} />
+        {/* Subtle grid */}
+        <div className="absolute inset-0 opacity-[0.025]"
+          style={{ backgroundImage: "linear-gradient(rgba(255,255,255,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.4) 1px, transparent 1px)", backgroundSize: "50px 50px" }} />
+      </div>
 
-        {/* Animated Logo */}
+      {/* ── Hero ───────────────────────────────────────────────────────────── */}
+      <div className="w-full max-w-3xl mx-auto text-center pt-8 pb-2 md:pt-14 md:pb-4 flex flex-col items-center gap-4 md:gap-6 relative z-10">
+
+        {/* Animated Hero Logo */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.6 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, ease: [0.175, 0.885, 0.32, 1.275] }}
-          className="flex justify-center mb-2"
+          initial={{ opacity: 0, scale: 0.5, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: [0.175, 0.885, 0.32, 1.275] }}
+          className="flex justify-center"
         >
-          <div className="relative w-16 h-16 md:w-24 md:h-24">
-            {/* Outer rotating ring */}
-            <div className="absolute inset-0 rounded-full border-2 border-primary/30 animate-spin" style={{ animationDuration: "8s" }} />
-            {/* Middle pulsing ring */}
-            <div className="absolute inset-1 rounded-full border border-violet-400/20 animate-ping" style={{ animationDuration: "3s" }} />
-            {/* Glow blob */}
-            <div className="absolute inset-2 rounded-full bg-gradient-to-br from-violet-600/40 to-blue-600/30 blur-xl animate-pulse" />
-            {/* Logo image */}
+          <div className="relative">
+            {/* Layered glow */}
+            <div className="absolute -inset-6 rounded-[40px]"
+              style={{ background: "radial-gradient(ellipse, rgba(139,92,246,0.35) 0%, rgba(59,130,246,0.15) 50%, transparent 70%)", animation: "glowPulse 3s ease-in-out infinite" }} />
+            <div className="absolute -inset-3 rounded-3xl"
+              style={{ background: "radial-gradient(ellipse, rgba(139,92,246,0.2) 0%, transparent 70%)", animation: "glowPulse 3s ease-in-out infinite 0.5s" }} />
+
+            {/* Logo */}
             <motion.div
-              animate={{ y: [0, -4, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-0 flex items-center justify-center"
+              animate={{ y: [0, -6, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              className="relative w-24 h-24 lg:w-28 lg:h-28 rounded-[22px] lg:rounded-[28px] overflow-hidden"
+              style={{ boxShadow: "0 0 0 1px rgba(139,92,246,0.4), 0 20px 60px rgba(139,92,246,0.5), 0 0 100px rgba(99,102,241,0.2)" }}
             >
-              <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-[0_0_30px_rgba(139,92,246,0.5)] border border-white/10">
-                <img src="/vidsnap-logo.png" alt="VidSnap" className="w-full h-full object-cover" />
-              </div>
+              <img src="/vidsnap-logo.png" alt="VidSnap" className="w-full h-full object-cover" />
             </motion.div>
           </div>
         </motion.div>
 
-        {/* Brand Name */}
+        {/* Brand Name — consistent violet gradient everywhere */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.3 }}
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}
           className="flex items-center justify-center gap-3"
         >
-          <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-violet-400 via-blue-400 to-cyan-400 bg-clip-text text-transparent">
+          <span className="text-2xl md:text-3xl font-black tracking-tight"
+            style={{ background: "linear-gradient(135deg, #a78bfa 0%, #60a5fa 50%, #34d399 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
             VidSnap
           </span>
-          <span className="px-2 py-0.5 rounded-md bg-primary/15 border border-primary/25 text-[10px] font-bold text-primary uppercase tracking-widest">
+          <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.15em]"
+            style={{ background: "rgba(139,92,246,0.15)", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa" }}>
             Universal
           </span>
         </motion.div>
 
+        {/* Animated subtitle badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-sm font-medium text-white/80"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)" }}
         >
-          <Sparkles className="w-4 h-4 text-primary" />
-          Supports 1000+ Platforms — Any Site, Any Quality
+          <Sparkles className="w-4 h-4" style={{ color: "#a78bfa" }} />
+          <span className="text-white/80">Supports <strong className="text-white">1000+ Platforms</strong> — Any Site, Any Quality</span>
         </motion.div>
 
+        {/* Main heading with animated shimmer */}
         <motion.h1
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}
-          className="text-3xl sm:text-4xl md:text-6xl font-black tracking-tight leading-tight"
+          initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tight leading-[1.05]"
         >
-          Download <span className="text-gradient-electric">Anything</span>
+          <span className="text-white">Download </span>
+          <span className="animated-gradient-text">Anything</span>
         </motion.h1>
 
+        {/* Subtext */}
         <motion.p
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-sm sm:text-base md:text-lg text-muted-foreground max-w-xl mx-auto px-2"
+          className="text-sm sm:text-base text-white/50 max-w-xl mx-auto leading-relaxed"
         >
-          4K · 1080p · 720p · HDR · DV · MP3 · FLAC · HLS streams · 1000+ websites
+          4K · 1080p · 720p · HDR · MP3 · FLAC · HLS streams · No watermarks · No signup
         </motion.p>
+
+        {/* Platform logos row */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.35 }}
+          className="flex flex-wrap items-center justify-center gap-2 max-w-2xl"
+        >
+          {[
+            { name: "YouTube",    color: "#FF0000", bg: "#FF000018",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#FF0000"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg> },
+            { name: "Instagram",  color: "#E1306C", bg: "#E1306C18",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5"><defs><linearGradient id="ig" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FD5949"/><stop offset="50%" stopColor="#D6249F"/><stop offset="100%" stopColor="#285AEB"/></linearGradient></defs><path fill="url(#ig)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg> },
+            { name: "TikTok",     color: "#69C9D0", bg: "#00000025",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5"><path fill="#69C9D0" d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.27 6.27 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.75a8.18 8.18 0 0 0 4.78 1.52V6.79a4.85 4.85 0 0 1-1.01-.1z"/></svg> },
+            { name: "Facebook",   color: "#1877F2", bg: "#1877F218",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> },
+            { name: "Twitter/X",  color: "#FFFFFF", bg: "#FFFFFF10",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.748l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg> },
+            { name: "Jio Hotstar",color: "#2563eb", bg: "#2563eb18",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="10" fill="#1a56db"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="10" fontWeight="900">H</text></svg> },
+            { name: "JioCinema", color: "#9333ea", bg: "#9333ea18",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5"><rect x="2" y="2" width="20" height="20" rx="5" fill="#7c3aed"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="9" fontWeight="900">Jio</text></svg> },
+            { name: "Sony LIV",  color: "#E21A1A", bg: "#E21A1A18",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5"><rect x="2" y="2" width="20" height="20" rx="4" fill="#E21A1A"/><text x="12" y="16" textAnchor="middle" fill="white" fontSize="7" fontWeight="900">LIV</text></svg> },
+            { name: "Netflix",   color: "#E50914", bg: "#E5091418",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#E50914"><path d="M5.398 0v.006c3.028 8.556 5.37 15.175 8.348 23.596 2.344.058 4.85.398 4.854.398-2.8-7.924-5.923-16.747-8.487-24zm8.489 0v9.63L18.6 24c-.538.086-2.304.504-3.049.6L5.398 0zm-5.883 0v12.803c-1.188-3.365-2.485-7.21-3.514-12.803z"/></svg> },
+            { name: "Vimeo",     color: "#1ab7ea", bg: "#1ab7ea18",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#1ab7ea"><path d="M23.977 6.416c-.105 2.338-1.739 5.543-4.894 9.609-3.268 4.247-6.026 6.37-8.29 6.37-1.409 0-2.578-1.294-3.553-3.881L5.322 11.4C4.603 8.816 3.834 7.522 3.01 7.522c-.179 0-.806.378-1.881 1.132L0 7.197c1.185-1.044 2.351-2.084 3.501-3.128C5.08 2.701 6.266 1.984 7.055 1.91c1.867-.18 3.016 1.1 3.447 3.838.465 2.953.789 4.789.971 5.507.539 2.45 1.131 3.674 1.776 3.674.502 0 1.256-.796 2.265-2.385 1.004-1.589 1.54-2.797 1.612-3.628.144-1.371-.395-2.061-1.614-2.061-.574 0-1.167.121-1.777.391 1.186-3.868 3.434-5.757 6.762-5.637 2.473.06 3.628 1.664 3.48 4.807z"/></svg> },
+            { name: "Reddit",    color: "#FF4500", bg: "#FF450018",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#FF4500"><path d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.744c.688 0 1.25.561 1.25 1.249a1.25 1.25 0 0 1-2.498.056l-2.597-.547-.8 3.747c1.824.07 3.48.632 4.674 1.488.308-.309.73-.491 1.207-.491.968 0 1.754.786 1.754 1.754 0 .716-.435 1.333-1.01 1.614a3.111 3.111 0 0 1 .042.52c0 2.694-3.13 4.87-7.004 4.87-3.874 0-7.004-2.176-7.004-4.87 0-.183.015-.366.043-.534A1.748 1.748 0 0 1 4.028 12c0-.968.786-1.754 1.754-1.754.463 0 .898.196 1.207.49 1.207-.883 2.878-1.43 4.744-1.487l.885-4.182a.342.342 0 0 1 .14-.197.35.35 0 0 1 .238-.042l2.906.617a1.214 1.214 0 0 1 1.108-.701zM9.25 12C8.561 12 8 12.562 8 13.25c0 .687.561 1.248 1.25 1.248.687 0 1.248-.561 1.248-1.249 0-.688-.561-1.249-1.249-1.249zm5.5 0c-.687 0-1.248.561-1.248 1.25 0 .687.561 1.248 1.249 1.248.688 0 1.249-.561 1.249-1.249 0-.687-.562-1.249-1.25-1.249zm-5.466 3.99a.327.327 0 0 0-.231.094.33.33 0 0 0 0 .463c.842.842 2.484.913 2.961.913.477 0 2.105-.056 2.961-.913a.361.361 0 0 0 .029-.463.33.33 0 0 0-.464 0c-.547.533-1.684.73-2.512.73-.828 0-1.979-.196-2.512-.73a.326.326 0 0 0-.232-.095z"/></svg> },
+            { name: "Crunchyroll", color: "#F47521", bg: "#F4752118",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5"><circle cx="12" cy="12" r="10" fill="#F47521"/><circle cx="12" cy="12" r="6" fill="none" stroke="white" strokeWidth="2"/><circle cx="12" cy="12" r="2" fill="white"/></svg> },
+            { name: "Twitch",    color: "#9146FF", bg: "#9146FF18",
+              svg: <svg viewBox="0 0 24 24" className="w-3.5 h-3.5" fill="#9146FF"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/></svg> },
+            { name: "+ 1000 more", color: "#a78bfa", bg: "#a78bfa15", svg: null },
+          ].map((p) => (
+            <span
+              key={p.name}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap"
+              style={{ background: p.bg, border: `1px solid ${p.color}30`, color: p.color }}
+            >
+              {p.svg}
+              {p.name}
+            </span>
+          ))}
+        </motion.div>
       </div>
 
       {/* ── URL Input ─────────────────────────────────────────────────────── */}
-      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.3 }}>
+      <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.4, delay: 0.3 }} className="w-full max-w-3xl mx-auto">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="relative group">
             <div className="absolute -inset-1 bg-gradient-electric rounded-2xl opacity-20 group-hover:opacity-40 blur-xl transition-opacity duration-500" />
-            <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-card border border-white/10 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-colors gap-2 sm:gap-0">
-              <div className="pl-3 sm:pl-4 pt-1 sm:pt-0 text-muted-foreground shrink-0 flex items-center">
+            {/* Mobile: stacked; Desktop: inline row */}
+            <div className="relative flex flex-col sm:flex-row items-stretch sm:items-center bg-card border border-white/10 rounded-2xl p-2 shadow-2xl focus-within:border-primary/50 transition-colors">
+              {/* Icon — only show on desktop inline */}
+              <div className="hidden sm:flex pl-4 text-muted-foreground shrink-0 items-center">
                 <Link2 className="w-5 h-5" />
               </div>
               <FormField
                 control={form.control}
                 name="url"
                 render={({ field }) => (
-                  <FormItem className="flex-1 px-4 space-y-0">
+                  <FormItem className="flex-1 sm:px-4 px-3 space-y-0">
                     <FormControl>
-                      <Input
-                        placeholder="Paste any video URL..."
-                        className="border-0 bg-transparent text-sm sm:text-base shadow-none focus-visible:ring-0 px-0 h-10 sm:h-14"
-                        disabled={analyzeVideo.isPending}
-                        {...field}
-                      />
+                      <div className="flex items-center gap-2 sm:gap-0">
+                        {/* Mobile icon inline with input */}
+                        <Link2 className="w-4 h-4 text-muted-foreground shrink-0 sm:hidden" />
+                        <Input
+                          placeholder="Paste video URL here..."
+                          className="border-0 bg-transparent text-sm sm:text-base shadow-none focus-visible:ring-0 px-0 h-12 sm:h-14"
+                          disabled={analyzeVideo.isPending}
+                          {...field}
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage className="pb-1 pl-0 text-xs" />
                   </FormItem>
@@ -457,7 +532,8 @@ export default function Home() {
               <Button
                 type="submit" size="lg"
                 className={cn(
-                  "h-14 px-8 rounded-xl text-base font-bold shrink-0 transition-all duration-300",
+                  /* Mobile: full width below input; Desktop: auto-width inline */
+                  "w-full sm:w-auto h-11 sm:h-14 px-6 sm:px-8 rounded-xl text-sm sm:text-base font-bold shrink-0 transition-all duration-300 flex items-center justify-center gap-2",
                   analyzeVideo.isPending
                     ? "bg-white/10 text-white cursor-not-allowed"
                     : "bg-gradient-electric hover:shadow-electric text-white border-0"
@@ -465,9 +541,10 @@ export default function Home() {
                 disabled={analyzeVideo.isPending || !form.watch("url")}
               >
                 {analyzeVideo.isPending ? (
-                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{analyzeElapsed > 0 ? `${analyzeElapsed}s…` : "Analyzing…"}</>
+                  <><Loader2 className="h-4 w-4 animate-spin" />{analyzeElapsed > 0 ? `${analyzeElapsed}s…` : "Analyzing…"}</>
                 ) : (
-                  <>Analyze <ChevronRight className="ml-1 h-5 w-5" /></>
+                  /* Search icon + text */
+                  <><Search className="h-4 w-4" /><span>Analyze</span></>
                 )}
               </Button>
             </div>

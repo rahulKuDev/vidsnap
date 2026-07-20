@@ -104,6 +104,8 @@ export const stmts = {
   updateUserPassword:   db.prepare("UPDATE users SET password_hash=?,reset_token=NULL,reset_token_expiry=NULL,updated_at=unixepoch() WHERE id=?"),
   updateUserBan:        db.prepare("UPDATE users SET is_banned=?,banned_reason=?,updated_at=unixepoch() WHERE id=?"),
   updateUserRole:       db.prepare("UPDATE users SET role=?,updated_at=unixepoch() WHERE id=?"),
+  updateUserProfile:    db.prepare("UPDATE users SET name=COALESCE(?,name),avatar_url=COALESCE(?,avatar_url),updated_at=unixepoch() WHERE id=?"),
+  updateUserPasswordById: db.prepare("UPDATE users SET password_hash=?,updated_at=unixepoch() WHERE id=?"),
   countUsers:           db.prepare("SELECT COUNT(*) as count FROM users"),
   getAllUsers:           db.prepare("SELECT * FROM users ORDER BY created_at DESC"),
 

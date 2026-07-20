@@ -13,6 +13,7 @@ import PlatformsPage from './pages/platforms';
 import AuthPage from './pages/auth';
 import ResetPasswordPage from './pages/reset-password';
 import HelpPage from './pages/help';
+import ProfilePage from './pages/profile';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -96,6 +97,15 @@ function Router() {
         {() => (
           <AuthGuard>
             <Layout><HelpPage /></Layout>
+          </AuthGuard>
+        )}
+      </Route>
+      <Route path="/profile">
+        {() => (
+          <AuthGuard>
+            {/* Render the home page as backdrop, profile panel slides over it */}
+            <Layout><Home /></Layout>
+            <ProfilePage />
           </AuthGuard>
         )}
       </Route>
