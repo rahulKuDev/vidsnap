@@ -55,3 +55,13 @@ artifacts/api-server/downloads/
 *.m4a
 *.mkv
 *.webm
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# SQLite database (runtime data)
+artifacts/api-server/data/*.db
+artifacts/api-server/data/*.db-wal
+artifacts/api-server/data/*.db-shm
