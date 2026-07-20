@@ -5,6 +5,6 @@ dockerfilePath = "artifacts/api-server/Dockerfile"
 [deploy]
 startCommand = "node --enable-source-maps ./dist/index.mjs"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 300
+healthcheckTimeout = 60
 restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 3
