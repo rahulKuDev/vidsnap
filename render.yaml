@@ -2,19 +2,15 @@ services:
   - type: web
     name: vidsnap-api
     runtime: docker
-    plan: starter
+    plan: free
     dockerfilePath: ./artifacts/api-server/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
-    disk:
-      name: vidsnap-data
-      mountPath: /app/persist
-      sizeGB: 5
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 8080
+        value: 10000
       - key: LOG_LEVEL
         value: info
       - key: JWT_SECRET
@@ -24,11 +20,11 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false
       - key: DB_DIR
-        value: /app/persist/data
+        value: /tmp/data
       - key: DOWNLOADS_DIR
-        value: /app/persist/downloads
+        value: /tmp/downloads
       - key: UPLOADS_DIR
-        value: /app/persist/uploads
+        value: /tmp/uploads
       - key: YTDLP_PATH
         value: /usr/local/bin/yt-dlp
       - key: SMTP_HOST

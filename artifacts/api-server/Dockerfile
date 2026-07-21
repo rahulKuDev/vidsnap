@@ -35,18 +35,18 @@ COPY --from=builder /app/artifacts/api-server/dist ./dist
 COPY --from=builder /app/artifacts/api-server/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 
-RUN mkdir -p /app/downloads /app/uploads /app/data /app/persist
+RUN mkdir -p /tmp/downloads /tmp/uploads /tmp/data
 
 ENV NODE_ENV=production
-ENV PORT=8080
+ENV PORT=10000
 ENV YTDLP_PATH=/usr/local/bin/yt-dlp
-ENV DOWNLOADS_DIR=/app/downloads
-ENV UPLOADS_DIR=/app/uploads
-ENV DB_DIR=/app/data
+ENV DOWNLOADS_DIR=/tmp/downloads
+ENV UPLOADS_DIR=/tmp/uploads
+ENV DB_DIR=/tmp/data
 
-EXPOSE 8080
+EXPOSE 10000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f "http://localhost:${PORT:-8080}/api/health" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f "http://localhost:${PORT:-10000}/api/health" || exit 1
 
 CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
