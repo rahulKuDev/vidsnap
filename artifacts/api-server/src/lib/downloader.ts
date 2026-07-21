@@ -12,9 +12,21 @@ const refererCache = new Map<string, string>();
 export const DOWNLOADS_DIR = process.env.DOWNLOADS_DIR || path.join(process.cwd(), "downloads");
 if (!existsSync(DOWNLOADS_DIR)) mkdirSync(DOWNLOADS_DIR, { recursive: true });
 
-// ─── Global cookies (from env var YTDLP_COOKIES_B64) ─────────────────────────
+// ─── Global cookies (YTDLP_COOKIES_FILE = direct path, or YTDLP_COOKIES_B64 = base64) ─────
 export let GLOBAL_COOKIES_FILE: string | undefined;
 (function initGlobalCookies() {
+  // Option 1: direct file path (easiest for local dev)
+  const filePath = process.env.YTDLP_COOKIES_FILE;
+  if (filePath && existsSync(filePath)) {
+    GLOBAL_COOKIES_FILE = filePath;
+    logger.info({ filePath }, "Global cookies file loaded from YTDLP_COOKIES_FILE");
+    return;
+  }
+  if (filePath) {
+    logger.warn({ filePath }, "YTDLP_COOKIES_FILE set but file not found — ignoring");
+  }
+
+  // Option 2: base64-encoded content (for Railway/Render)
   const b64 = process.env.YTDLP_COOKIES_B64;
   if (!b64) return;
   try {
@@ -29,6 +41,7 @@ export let GLOBAL_COOKIES_FILE: string | undefined;
     logger.warn({ e }, "Failed to initialize global cookies from env var");
   }
 })();
+
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface VideoFormat {
@@ -279,31 +292,50 @@ function getExtractorArgSets(url: string): Array<{ base: string[], extra: string
       ];
     }
     if (host.includes("tiktok.com")) {
-      // Random device_id to avoid fingerprint blocks
+      // Random device_id to avoid fingerprint blocks on mobile API
       const deviceId = () => String(Math.floor(Math.random() * 9e18) + 1e18);
-      return [
+      const cookieArgs = GLOBAL_COOKIES_FILE ? ["--cookies", GLOBAL_COOKIES_FILE] : [];
+
+      const argSets: { base: string[]; extra: string[] }[] = [];
+
+      // If cookies available → web strategy first (bypasses IP block on mobile API)
+      if (GLOBAL_COOKIES_FILE) {
+        argSets.push(
+          // Web path with cookies — most reliable when logged in
+          { base: ANALYZE_BASE_ARGS, extra: [...cookieArgs] },
+          // Web path + explicit browser UA
+          { base: ANALYZE_BASE_ARGS, extra: [...cookieArgs, "--add-headers", "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"] },
+        );
+      }
+
+      // Mobile API fallbacks (best on server IPs without IP ban)
+      argSets.push(
         def([
+          ...cookieArgs,
           "--extractor-args", `tiktok:api_hostname=api19-normal-c-alisg.tiktokv.com;device_id=${deviceId()}`,
           "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
         ]),
         def([
+          ...cookieArgs,
           "--extractor-args", `tiktok:api_hostname=api22-normal-c-alisg.tiktokv.com;device_id=${deviceId()}`,
           "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
         ]),
         def([
+          ...cookieArgs,
           "--extractor-args", `tiktok:api_hostname=api16-normal-c-useast1a.tiktokv.com;device_id=${deviceId()}`,
           "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
         ]),
         def([
+          ...cookieArgs,
           "--extractor-args", `tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com;device_id=${deviceId()}`,
           "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
         ]),
-        def([
-          "--add-headers", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15",
-        ]),
-        def([]),
-      ];
+        def([...cookieArgs, "--add-headers", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15"]),
+        def([...cookieArgs]),
+      );
+      return argSets;
     }
+
     if (host.includes("instagram.com")) return [
       def(["--add-headers", "User-Agent:Instagram 319.0.0.0.34"]),
       def(["--extractor-args", "instagram:api=v1"]),
