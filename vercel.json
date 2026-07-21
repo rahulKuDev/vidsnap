@@ -7,7 +7,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://vidsnap-api-1adi.onrender.com/api/:match*"
+      "destination": "https://vidsnap-api-production.up.railway.app/api/:match*"
     },
     {
       "source": "/(.*)",
