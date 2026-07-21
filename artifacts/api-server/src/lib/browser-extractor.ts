@@ -238,10 +238,11 @@ export async function browserExtractVideoUrl(
 
     // Try play buttons in all frames (including iframes)
     const playSelectors = [
-      "button[aria-label*='play' i]", ".play-button", ".jw-icon-display",
+      ".play-button-outer", ".play-button", "[onclick*='fireload']",
+      "button[aria-label*='play' i]", ".jw-icon-display", ".jw-display-icon",
       ".plyr__control--overlaid", "[class*='playBtn']", "[class*='play-btn']",
-      "[class*='PlayButton']", "[data-testid*='play']", ".vjs-big-play-button",
-      ".ytp-large-play-button", "video",
+      "[class*='PlayButton']", "[class*='play_button']", "[data-testid*='play']",
+      ".vjs-big-play-button", ".ytp-large-play-button", "video", ".loader",
     ];
 
     for (const frame of page.frames()) {
@@ -254,6 +255,75 @@ export async function browserExtractVideoUrl(
             break;
           }
         } catch {}
+      }
+    }
+
+    // Collect iframe src URLs for fallback embedded player navigation
+    const iframeSrcs: string[] = [];
+    for (const frame of page.frames()) {
+      try {
+        const srcs = await frame.evaluate((): string[] => {
+          const res: string[] = [];
+          (document as any).querySelectorAll("iframe").forEach((f: any) => {
+            const src = f.src || f.getAttribute("data-src") || f.getAttribute("src");
+            if (src && src.startsWith("http")) res.push(src);
+          });
+          return res;
+        });
+        iframeSrcs.push(...srcs);
+      } catch {}
+    }
+
+    // If no streams captured yet, navigate directly to embedded iframe players
+    if (foundUrls.length === 0 && iframeSrcs.length > 0) {
+      const uniqueIframes = Array.from(new Set(iframeSrcs)).filter(
+        u => !u.includes("facebook") && !u.includes("google") && !u.includes("twitter")
+      );
+      for (const iframeUrl of uniqueIframes.slice(0, 3)) {
+        logger.info({ iframeUrl }, "Browser: navigating directly to embedded player iframe");
+        try {
+          await page.goto(iframeUrl, { waitUntil: "domcontentloaded", timeout: 15000 });
+          await page.waitForTimeout(1500);
+
+          // Trigger click handlers & fireload directly in browser DOM context
+          await page.evaluate(() => {
+            try { (window as any).fireload?.(); } catch {}
+            try { (document as any).querySelector('.play-button-outer')?.click(); } catch {}
+            try { (document as any).querySelector('.play-button')?.click(); } catch {}
+            try { (document as any).querySelectorAll('video').forEach((v: any) => v.play?.()); } catch {}
+          });
+
+          for (const sel of playSelectors) {
+            try {
+              const el = await page.$(sel);
+              if (el) {
+                await el.click({ timeout: 1500 });
+                logger.info({ sel, iframeUrl }, "Browser: clicked iframe play button");
+              }
+            } catch {}
+          }
+
+          await page.waitForTimeout(2000);
+
+          // Scan iframe HTML content + unpacked JS for m3u8/mp4 stream URLs
+          try {
+            const iframeHtml = await page.content();
+            const unpackedIframeHtml = unpackPackedJS(iframeHtml);
+            const cleanedIframe = unpackedIframeHtml.replace(/\\\/|\\/g, "/");
+            const streamRegex = /(?:https?:)?\/\/[^\s"'<>\\]+?\.(?:m3u8|mpd|mp4|webm)(?:\?[^\s"'<>\\]*)?/gi;
+            let sm;
+            while ((sm = streamRegex.exec(cleanedIframe)) !== null) {
+              let su = sm[0];
+              if (su.startsWith("//")) su = "https:" + su;
+              const score = scoreUrl(su);
+              if (score >= 0) foundUrls.push({ url: su, score: score + 5 });
+            }
+          } catch {}
+
+          if (foundUrls.length > 0) break;
+        } catch (e) {
+          logger.warn({ e, iframeUrl }, "Browser: failed to navigate iframe URL");
+        }
       }
     }
 
@@ -308,15 +378,31 @@ export async function browserExtractVideoUrl(
       } catch {}
     }
 
-    // Also scan page source HTML for video URLs
+    // Also scan page source HTML (and unpacked JS) for video URLs
     try {
-      const content = await page.content();
-      const videoUrlRegex = /https?:\/\/[^\s"'<>]+?\.(?:m3u8|mpd|mp4|webm)(?:\?[^\s"'<>]*)?/gi;
+      const rawContent = await page.content();
+      const unpackedContent = unpackPackedJS(rawContent);
+      const cleaned = unpackedContent.replace(/\\\/|\\/g, "/");
+
+      // Match standard http(s) URLs with m3u8, mpd, mp4, webm extensions
+      const videoUrlRegex = /(?:https?:)?\/\/[^\s"'<>\\]+?\.(?:m3u8|mpd|mp4|webm)(?:\?[^\s"'<>\\]*)?/gi;
       let m;
-      while ((m = videoUrlRegex.exec(content)) !== null) {
-        const url = m[0];
-        const score = scoreUrl(url);
-        if (score >= 0) foundUrls.push({ url, score });
+      while ((m = videoUrlRegex.exec(cleaned)) !== null) {
+        let u = m[0];
+        if (u.startsWith("//")) u = "https:" + u;
+        const score = scoreUrl(u);
+        if (score >= 0) foundUrls.push({ url: u, score });
+      }
+
+      // Match domain paths without scheme (e.g. s7.as-cdn5.top/cdn/down/.../l.m3u8)
+      const domainPathRegex = /([a-z0-9\-]+(?:\.[a-z0-9\-]+)+\/[^\s"'<>\\]+?\.(?:m3u8|mpd|mp4|webm)(?:\?[^\s"'<>\\]*)?)/gi;
+      while ((m = domainPathRegex.exec(cleaned)) !== null) {
+        const domainPath = m[1];
+        if (domainPath.includes(".")) {
+          const u = "https://" + domainPath;
+          const score = scoreUrl(u);
+          if (score >= 0) foundUrls.push({ url: u, score });
+        }
       }
     } catch {}
 
@@ -391,6 +477,30 @@ async function humanScroll(page: any): Promise<void> {
     });
     await page.waitForTimeout(400);
   } catch {}
+}
+
+function unpackPackedJS(code: string): string {
+  try {
+    const regex = /eval\(function\(p,a,c,k,e,d\)\{.*?\}\('([^']+)',\s*(\d+),\s*(\d+),\s*'([^']+)'\.split\('\|'\)/gi;
+    let match;
+    let result = code;
+    while ((match = regex.exec(code)) !== null) {
+      try {
+        let [_, p, aStr, cStr, kStr] = match;
+        let a = parseInt(aStr, 10);
+        let c = parseInt(cStr, 10);
+        let k = kStr.split("|");
+        const e = (n: number): string => (n < a ? "" : e(Math.floor(n / a))) + (n % a > 35 ? String.fromCharCode(n % a + 29) : (n % a).toString(36));
+        while (c--) {
+          if (k[c]) p = p.replace(new RegExp("\\b" + e(c) + "\\b", "g"), k[c]);
+        }
+        result += "\n" + p;
+      } catch {}
+    }
+    return result;
+  } catch {
+    return code;
+  }
 }
 
 interface PlaywrightCookie {

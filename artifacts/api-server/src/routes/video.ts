@@ -62,7 +62,8 @@ router.post("/video/analyze", async (req, res): Promise<void> => {
   } catch (err: unknown) {
     req.log.error({ err }, "Video analysis failed");
     const msg = err instanceof Error ? err.message : "Analysis failed";
-    res.status(500).json({ error: msg });
+    const status = msg.includes("Internal") ? 500 : 400;
+    res.status(status).json({ error: msg });
   } finally {
     // Cleanup temp cookies file
     if (tempCookiesPath) {

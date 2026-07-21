@@ -1,6 +1,7 @@
 import { spawn, execSync } from "child_process";
-import { existsSync, mkdirSync, readdirSync, statSync } from "fs";
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "fs";
 import path from "path";
+import os from "os";
 import { logger } from "./logger";
 import { browserExtractVideoUrl } from "./browser-extractor";
 import { downloadHLS } from "./hls-downloader";
@@ -10,6 +11,24 @@ const refererCache = new Map<string, string>();
 
 export const DOWNLOADS_DIR = process.env.DOWNLOADS_DIR || path.join(process.cwd(), "downloads");
 if (!existsSync(DOWNLOADS_DIR)) mkdirSync(DOWNLOADS_DIR, { recursive: true });
+
+// ─── Global cookies (from env var YTDLP_COOKIES_B64) ─────────────────────────
+export let GLOBAL_COOKIES_FILE: string | undefined;
+(function initGlobalCookies() {
+  const b64 = process.env.YTDLP_COOKIES_B64;
+  if (!b64) return;
+  try {
+    const cookiesDir = path.join(os.tmpdir(), "vidsnap-cookies");
+    mkdirSync(cookiesDir, { recursive: true });
+    const cookiesPath = path.join(cookiesDir, "global-cookies.txt");
+    const decoded = Buffer.from(b64, "base64").toString("utf8");
+    writeFileSync(cookiesPath, decoded, "utf8");
+    GLOBAL_COOKIES_FILE = cookiesPath;
+    logger.info({ cookiesPath }, "Global cookies file initialized from YTDLP_COOKIES_B64 env var");
+  } catch (e) {
+    logger.warn({ e }, "Failed to initialize global cookies from env var");
+  }
+})();
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface VideoFormat {
@@ -147,27 +166,6 @@ function findYtDlp(): string {
 
 const YTDLP_BIN = findYtDlp();
 logger.info({ bin: YTDLP_BIN }, "yt-dlp binary resolved");
-
-// ─── Global cookies (from env var YTDLP_COOKIES_B64) ─────────────────────────
-// Set YTDLP_COOKIES_B64 in Render env vars with base64-encoded cookies.txt
-// This lets yt-dlp bypass YouTube/Instagram bot detection on the server.
-export let GLOBAL_COOKIES_FILE: string | undefined;
-(function initGlobalCookies() {
-  const b64 = process.env.YTDLP_COOKIES_B64;
-  if (!b64) return;
-  try {
-    const { writeFileSync, mkdirSync } = require("fs") as typeof import("fs");
-    const cookiesDir = "/tmp/vidsnap-cookies";
-    mkdirSync(cookiesDir, { recursive: true });
-    const cookiesPath = `${cookiesDir}/global-cookies.txt`;
-    const decoded = Buffer.from(b64, "base64").toString("utf8");
-    writeFileSync(cookiesPath, decoded, "utf8");
-    GLOBAL_COOKIES_FILE = cookiesPath;
-    logger.info({ cookiesPath }, "Global cookies file initialized from YTDLP_COOKIES_B64 env var");
-  } catch (e) {
-    logger.warn({ e }, "Failed to initialize global cookies from env var");
-  }
-})();
 
 
 // ─── ffmpeg path ──────────────────────────────────────────────────────────────
@@ -386,7 +384,7 @@ function friendlyError(raw: string): string {
       raw.includes("No suitable extractor") || raw.includes("no extractor") ||
       (raw.includes("Unable to extract") && !raw.includes("youtube")) ||
       raw.includes("ExtractorError")) {
-    return "This website is not directly supported. VidSnap will try browser extraction as a fallback.";
+    return "This website uses Cloudflare protection or a custom player that blocks automated extractors. Please try a direct video or supported site link.";
   }
   if (raw.includes("Requested format is not available"))
     return "No downloadable formats found. The video may be private, region-locked, or require login.";

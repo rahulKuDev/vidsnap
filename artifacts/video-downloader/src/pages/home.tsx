@@ -261,8 +261,9 @@ export default function Home() {
           if (preferred) setSelectedFormat(preferred as VideoFormat);
         },
         onError: (err: unknown) => {
-          const msg = err instanceof Error ? err.message : "Failed to analyze URL";
-          setAnalyzeError(msg);
+          const raw = err instanceof Error ? err.message : "Failed to analyze URL";
+          const cleaned = raw.replace(/^HTTP \d+ [^:]+:\s*/i, "");
+          setAnalyzeError(cleaned);
         },
       }
     );
