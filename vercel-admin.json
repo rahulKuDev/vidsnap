@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/:match*",
-      "destination": "https://vidsnap-api.onrender.com/api/:match*"
+      "destination": "https://vidsnap-api-1adi.onrender.com/api/:match*"
     }
   ],
   "headers": [
