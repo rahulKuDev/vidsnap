@@ -38,7 +38,7 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// ── Health check (Railway / uptime monitors) ───────────────────────────────────
+// Health check (Render / uptime monitors)
 app.get("/api/health", (_req, res) => res.json({ status: "ok", ts: Date.now() }));
 
 app.use("/api", router);
@@ -55,4 +55,3 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 export default app;
-

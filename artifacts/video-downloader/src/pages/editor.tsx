@@ -448,6 +448,7 @@ function TrimTimeline({
 function ExportProgressPanel({ jobId, onDismiss }: { jobId: string; onDismiss: () => void }) {
   const { data: job } = useGetJobStatus(jobId, {
     query: {
+      queryKey: ["jobStatus", jobId],
       refetchInterval: (query) => {
         const s = (query.state.data as any)?.status;
         return (s === "done" || s === "error") ? false : 1500;

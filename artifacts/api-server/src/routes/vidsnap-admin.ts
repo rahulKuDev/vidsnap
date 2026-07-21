@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { stmts } from "../lib/vidsnap-db.js";
+import { stmts, type ErrorLogRow, type FeedbackRow, type UserRow } from "../lib/vidsnap-db.js";
 import { requireAdmin } from "../middlewares/auth.js";
 import { listDownloadJobs } from "../lib/jobs-store.js";
 
@@ -12,7 +12,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res, next): Promise<void> 
     const { count: userCount } = stmts.countUsers.get()!;
     const { count: errorCount } = stmts.countErrors.get()!;
     const { count: errorToday } = stmts.countErrorsToday.get()!;
-    const allFeedback = stmts.getAllFeedback.all();
+    const allFeedback = stmts.getAllFeedback.all() as FeedbackRow[];
     const openTickets = allFeedback.filter(f => f.status === "open").length;
 
     const allJobs = await listDownloadJobs();
@@ -34,7 +34,7 @@ router.get("/admin/stats", requireAdmin, async (_req, res, next): Promise<void> 
 
 // ─── All Users ─────────────────────────────────────────────────────────────────
 router.get("/admin/users", requireAdmin, (_req, res): void => {
-  const users = stmts.getAllUsers.all();
+  const users = stmts.getAllUsers.all() as UserRow[];
   res.json(users.map(u => ({
     id: u.id, name: u.name, email: u.email, role: u.role,
     isVerified: !!u.is_verified, isBanned: !!u.is_banned, bannedReason: u.banned_reason,
@@ -69,7 +69,7 @@ router.patch("/admin/users/:id/role", requireAdmin, (req, res): void => {
 
 // ─── All Feedback / Help ───────────────────────────────────────────────────────
 router.get("/admin/feedback", requireAdmin, (_req, res): void => {
-  const rows = stmts.getAllFeedback.all();
+  const rows = stmts.getAllFeedback.all() as FeedbackRow[];
   res.json(rows.map(r => ({
     id: r.id, userId: r.user_id, type: r.type, subject: r.subject, message: r.message,
     platform: r.platform, errorDetail: r.error_detail, imageUrl: r.image_url,
@@ -101,7 +101,7 @@ router.patch("/admin/feedback/:id", requireAdmin, (req, res): void => {
 // ─── Error Log ─────────────────────────────────────────────────────────────────
 router.get("/admin/errors", requireAdmin, (req, res): void => {
   const limit = Math.min(Number(req.query.limit) || 100, 500);
-  const rows = stmts.getRecentErrors.all(limit);
+  const rows = stmts.getRecentErrors.all(limit) as ErrorLogRow[];
   res.json(rows.map(r => ({
     id: r.id, source: r.source, platform: r.platform, errorType: r.error_type,
     message: r.message, stack: r.stack, url: r.url, userAgent: r.user_agent,

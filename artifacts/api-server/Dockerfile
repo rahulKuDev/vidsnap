@@ -1,32 +1,29 @@
-# ─── Stage 1: Build ──────────────────────────────────────────────────────────
+# Stage 1: Build
 FROM node:22-alpine AS builder
 
-# Install build tools
 RUN apk add --no-cache python3 make g++ curl ca-certificates openssl
-
-# Install pnpm
 RUN npm install -g pnpm@10
 
 WORKDIR /app
 
-# Copy workspace manifests first (better Docker layer caching)
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+# Copy workspace manifests first for better Docker layer caching.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc* ./
 
-# Copy all workspace source packages needed
+# Copy the API package and shared workspace packages.
 COPY artifacts/api-server ./artifacts/api-server
 COPY lib ./lib
 
-# Install ALL deps with hoisted linker (flat node_modules - no dangling symlinks)
-RUN pnpm install --no-frozen-lockfile --filter "@workspace/api-server..."
+# Install only the backend workspace graph. Fallback keeps deploys moving if the
+# lockfile is slightly out of date, but frozen lockfile is attempted first.
+RUN pnpm install --frozen-lockfile --filter "@workspace/api-server..." || \
+    pnpm install --no-frozen-lockfile --filter "@workspace/api-server..."
 
-# Build the API server
 WORKDIR /app/artifacts/api-server
 RUN pnpm run build
 
-# ─── Stage 2: Runtime ────────────────────────────────────────────────────────
+# Stage 2: Runtime
 FROM node:22-alpine AS runtime
 
-# Install runtime deps: ffmpeg + yt-dlp
 RUN apk add --no-cache python3 ffmpeg curl ca-certificates openssl \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
        -o /usr/local/bin/yt-dlp \
@@ -34,17 +31,12 @@ RUN apk add --no-cache python3 ffmpeg curl ca-certificates openssl \
 
 WORKDIR /app
 
-# Copy built dist
 COPY --from=builder /app/artifacts/api-server/dist ./dist
 COPY --from=builder /app/artifacts/api-server/package.json ./package.json
-
-# Copy hoisted node_modules from workspace root (flat, no symlinks)
 COPY --from=builder /app/node_modules ./node_modules
 
-# Runtime directories
-RUN mkdir -p /app/downloads /app/uploads /app/data
+RUN mkdir -p /app/downloads /app/uploads /app/data /app/persist
 
-# ─── Environment ────────────────────────────────────────────────────────────
 ENV NODE_ENV=production
 ENV PORT=8080
 ENV YTDLP_PATH=/usr/local/bin/yt-dlp
@@ -55,6 +47,6 @@ ENV DB_DIR=/app/data
 EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:8080/api/health || exit 1
+  CMD curl -f "http://localhost:${PORT:-8080}/api/health" || exit 1
 
 CMD ["node", "--enable-source-maps", "./dist/index.mjs"]

@@ -291,7 +291,11 @@
 <div id="toast"></div>
 
 <script>
-const API = 'http://localhost:3001/api';
+// Auto-detect API base: use same origin in production (Vercel proxies /api → Render)
+// or fall back to localhost for local development.
+const API = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8080/api'
+  : '/api';
 let token = localStorage.getItem('vs_admin_token');
 let currentTicketId = null;
 let allFeedback = [];

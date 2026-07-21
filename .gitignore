@@ -65,3 +65,12 @@ artifacts/api-server/downloads/
 artifacts/api-server/data/*.db
 artifacts/api-server/data/*.db-wal
 artifacts/api-server/data/*.db-shm
+
+# yt-dlp binaries (downloaded at Docker build time on Render — do not commit)
+yt-dlp
+yt-dlp.exe
+
+# Large binary / build artifacts
+*.tsbuildinfo
+attached_assets/
+

@@ -1,137 +1,113 @@
-# VidSnap — Universal Video Downloader
+# VidSnap - Universal Video Downloader
 
-A full-stack web application for downloading videos from 1,000+ websites including YouTube, Instagram, TikTok, Twitter/X, Facebook, Vimeo, Reddit, and many more.
+VidSnap is a full-stack web app for downloading videos from 1,000+ websites including YouTube, Instagram, TikTok, Twitter/X, Facebook, Vimeo, Reddit, and many more.
 
-## ✨ Features
+## Features
 
-- **Universal Downloader** — Supports 1,000+ video platforms
-- **Multiple Formats** — MP4, WebM, MP3, and more
-- **Quality Selection** — 4K, 1080p, 720p, 480p, 360p
-- **Auth System** — Secure JWT-based registration/login with email OTP verification
-- **Profile Page** — Avatar upload, name editing, password change
-- **Download History** — Track and manage all your downloads
-- **Video Editor** — Trim, crop, and process downloaded videos
-- **Admin Panel** — User management, ticket system, error log (admin role only)
-- **Responsive Design** — Works on desktop and mobile
+- Universal downloader for 1,000+ video platforms
+- MP4, WebM, MP3, MKV, M4A, FLAC, and WAV workflows
+- Quality selection up to 4K where the source supports it
+- JWT auth with email OTP verification
+- Profile page with avatar upload, name editing, and password changes
+- Download history and job tracking
+- Browser-side video editor
+- Admin panel for users, tickets, and error logs
+- Responsive React UI
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-**Frontend**
+Frontend:
+
 - React 19 + TypeScript
-- Vite + TailwindCSS v4
-- Framer Motion (animations)
-- Wouter (routing)
-- TanStack Query (data fetching)
-- Shadcn/ui components
+- Vite + Tailwind CSS
+- TanStack Query
+- Wouter
+- Framer Motion
+- shadcn/ui style components
 
-**Backend**
-- Node.js + Express 5
-- SQLite (node:sqlite — no external DB needed)
+Backend:
+
+- Node.js 22 + Express 5
+- SQLite via `node:sqlite`
 - JWT authentication
-- Bcrypt password hashing
-- Nodemailer (email OTP)
-- Multer (file uploads)
-- yt-dlp / Playwright (video extraction)
+- Nodemailer for OTP and password reset email
+- Multer uploads
+- `yt-dlp` and FFmpeg for video processing
 
-## 🚀 Getting Started
+## Local Setup
 
-### Prerequisites
+Prerequisites:
+
 - Node.js 22+
 - pnpm 10+
 
 ```bash
 npm install -g pnpm
-```
-
-### Installation
-
-```bash
-# Clone the repo
-git clone https://github.com/rahulKuDev/vidsnap.git
-cd vidsnap
-
-# Install all dependencies
 pnpm install
 ```
-
-### Environment Variables
 
 Create `artifacts/api-server/.env`:
 
 ```env
 PORT=8080
+NODE_ENV=development
 JWT_SECRET=your-super-secret-jwt-key-change-this
+APP_URL=http://localhost:5173
+ALLOWED_ORIGINS=http://localhost:5173
 
-# Email (for OTP verification)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-EMAIL_FROM=VidSnap <your-email@gmail.com>
+SMTP_PASS=your-gmail-app-password
+SMTP_FROM_NAME=VidSnap
 ```
 
-### Running Locally
+Run API:
 
-**Terminal 1 — API Server:**
 ```bash
 cd artifacts/api-server
 pnpm dev
-# Runs on http://localhost:8080
 ```
 
-**Terminal 2 — Frontend:**
+Run frontend:
+
 ```bash
 cd artifacts/video-downloader
-PORT=5173 BASE_PATH=/ pnpm dev
-# Runs on http://localhost:5173
+pnpm dev
 ```
 
-Then open [http://localhost:5173](http://localhost:5173)
+Open `http://localhost:5173`.
 
-### Building for Production
+## Production Build
 
 ```bash
-# Build everything
 pnpm build
-
-# Frontend output: artifacts/video-downloader/dist/public
-# API server output: artifacts/api-server/dist/index.mjs
 ```
 
-## 📁 Project Structure
+Outputs:
 
-```
-vidsnap/
-├── artifacts/
-│   ├── api-server/          # Express backend
-│   │   ├── src/
-│   │   │   ├── routes/      # API route handlers
-│   │   │   ├── lib/         # DB, auth middleware, logger
-│   │   │   └── index.ts     # Server entry point
-│   │   └── data/            # SQLite database (auto-created)
-│   │
-│   └── video-downloader/    # React frontend
-│       └── src/
-│           ├── pages/       # Route pages
-│           ├── components/  # UI components
-│           ├── context/     # Auth context
-│           └── App.tsx      # Root router
-│
-└── lib/                     # Shared libraries
-    ├── api-client-react/    # Auto-generated API client hooks
-    └── api-zod/             # Shared Zod schemas
-```
+- Frontend: `artifacts/video-downloader/dist/public`
+- API: `artifacts/api-server/dist/index.mjs`
 
-## 🔐 Admin Access
+## Deployment
 
-To grant admin access, update the user's role in the SQLite database:
+This repo is configured for Vercel + Render:
+
+- `vercel.json` deploys the frontend from the repo root and proxies `/api/*` to Render.
+- `render.yaml` deploys the backend as a Docker web service on Render.
+- `.env.example` lists the production environment variables.
+- Railway config has been removed.
+
+Full step-by-step instructions are in [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Admin Access
+
+The first registered user becomes admin automatically. To grant admin later, update SQLite:
 
 ```sql
 UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
 ```
 
-The Admin Panel is visible in the **Help** page for admin users.
+## License
 
-## 📄 License
-
-MIT — see [LICENSE](LICENSE)
+MIT

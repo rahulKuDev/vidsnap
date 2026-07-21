@@ -4,7 +4,7 @@ import path from "path";
 import { existsSync, mkdirSync } from "fs";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import { stmts } from "../lib/vidsnap-db.js";
+import { stmts, type FeedbackRow } from "../lib/vidsnap-db.js";
 import { optionalAuth, requireAuth } from "../middlewares/auth.js";
 
 const router = Router();
@@ -79,7 +79,7 @@ router.post("/feedback", optionalAuth, (req, res, next): void => {
 
 // ─── Get user's own feedback ───────────────────────────────────────────────────
 router.get("/feedback", requireAuth, (req, res): void => {
-  const rows = stmts.getFeedbackByUser.all(req.user!.userId);
+  const rows = stmts.getFeedbackByUser.all(req.user!.userId) as FeedbackRow[];
   res.json(rows.map(r => ({
     id: r.id, type: r.type, subject: r.subject, message: r.message,
     platform: r.platform, status: r.status, adminReply: r.admin_reply,
