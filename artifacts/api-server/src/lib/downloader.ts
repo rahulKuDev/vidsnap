@@ -1400,123 +1400,149 @@ export function startDownload(
 
   args.push("--ffmpeg-location", ffmpegPath, options.url);
 
-  // Add platform-specific extractor args (same as analyze uses for geo-bypass etc.)
+  // ── Multi-strategy retry (same as analyzeUrl) ──────────────────────────────
+  // Try each extractor arg set in order, stop on first success.
   const dlExtractorArgSets = getExtractorArgSets(options.url);
-  const dlExtractorArgs = dlExtractorArgSets.length > 0
-    ? [...dlExtractorArgSets[0].base, ...dlExtractorArgSets[0].extra]
-    : [];
 
-  logger.info({ args: args.slice(0, 10), hasCookies: !!options.cookiesFile }, "Starting download");
+  // Build array of all strategy arg combinations to try
+  const strategies: string[][] = dlExtractorArgSets.map(s => [...s.base, ...s.extra]);
+  if (strategies.length === 0) strategies.push([]); // at least one attempt
 
-  const proc = spawn(YTDLP_BIN, [...DOWNLOAD_ARGS, ...dlExtractorArgs, ...args]);
-  let lastProgress = 0;
+  logger.info(
+    { strategyCount: strategies.length, hasCookies: !!options.cookiesFile },
+    "Starting download with multi-strategy retry",
+  );
+
+  let strategyIndex = 0;
   let stderrBuf = "";
+  let lastProgress = 0;
 
-  proc.stdout.on("data", (chunk: Buffer) => {
-    const line = chunk.toString();
-    // Match: [download]  45.3% of   58.23MiB at    2.34MiB/s ETA 00:20
-    const fullMatch = line.match(/\[download\]\s+([\d.]+)%\s+of\s+[\d.]+\S+\s+at\s+([\d.]+\S+)\s+ETA\s+(\S+)/);
-    const simpleMatch = line.match(/\[download\]\s+([\d.]+)%/);
-
-    if (fullMatch) {
-      const pct = Math.round(parseFloat(fullMatch[1]));
-      const speed = fullMatch[2];
-      const eta = fullMatch[3];
-      if (pct > lastProgress) {
-        lastProgress = pct;
-        onProgress(pct, speed, eta);
-      }
-    } else if (simpleMatch) {
-      const pct = Math.round(parseFloat(simpleMatch[1]));
-      if (pct > lastProgress) {
-        lastProgress = pct;
-        onProgress(pct);
-      }
-    }
-  });
-
-  proc.stderr.on("data", (chunk: Buffer) => { stderrBuf += chunk.toString(); });
-
-  proc.on("close", (code) => {
-    if (code === 0) {
-      let actualFilename = options.outputFilename;
-      try {
-        const files = readdirSync(DOWNLOADS_DIR);
-        const match = files.find(
-          (f) => path.basename(f, path.extname(f)) === jobId
-            && !f.endsWith(".part")
-            && !f.endsWith(".ytdl")
-            && !f.endsWith(".cookies.txt")   // don't pick up our cookies file
-        );
-        if (match) actualFilename = match;
-      } catch {}
-      const fp = path.join(DOWNLOADS_DIR, actualFilename);
-      const filesize = existsSync(fp) ? statSync(fp).size : null;
-      onDone(actualFilename, filesize);
+  function tryNextStrategy(): void {
+    if (strategyIndex >= strategies.length) {
+      // All strategies exhausted
+      onError(friendlyError(stderrBuf.slice(-600)));
       return;
     }
 
-    // ── Auth error on public social → try browser extraction fallback ──────────
-    const errMsg = stderrBuf.slice(-600).trim() || `yt-dlp exited with code ${code}`;
-    const SOCIAL_DOMAINS = ["instagram.com", "tiktok.com", "snapchat.com"];
-    const isSocialUrl = SOCIAL_DOMAINS.some(d => options.url.includes(d));
-    const isAuthFailure = /logged.in|without being logged|login required|authentication|not allow.*without/i.test(errMsg);
+    const extractorArgs = strategies[strategyIndex++];
+    const attempt = strategyIndex;
+    stderrBuf = "";
+    lastProgress = 0;
 
-    if (isSocialUrl && isAuthFailure && !options.cookiesFile) {
-      logger.info({ url: options.url }, "Download auth error — trying browser extraction fallback");
-      (async () => {
+    logger.info({ attempt, totalStrategies: strategies.length }, "Download strategy attempt");
+
+    const proc = spawn(YTDLP_BIN, [...DOWNLOAD_ARGS, ...extractorArgs, ...args]);
+
+    proc.stdout.on("data", (chunk: Buffer) => {
+      const line = chunk.toString();
+      const fullMatch = line.match(/\[download\]\s+([\d.]+)%\s+of\s+[\d.]+\S+\s+at\s+([\d.]+\S+)\s+ETA\s+(\S+)/);
+      const simpleMatch = line.match(/\[download\]\s+([\d.]+)%/);
+
+      if (fullMatch) {
+        const pct = Math.round(parseFloat(fullMatch[1]));
+        const speed = fullMatch[2];
+        const eta = fullMatch[3];
+        if (pct > lastProgress) { lastProgress = pct; onProgress(pct, speed, eta); }
+      } else if (simpleMatch) {
+        const pct = Math.round(parseFloat(simpleMatch[1]));
+        if (pct > lastProgress) { lastProgress = pct; onProgress(pct); }
+      }
+    });
+
+    proc.stderr.on("data", (chunk: Buffer) => { stderrBuf += chunk.toString(); });
+
+    proc.on("close", (code) => {
+      if (code === 0) {
+        let actualFilename = options.outputFilename;
         try {
-          const extracted = await browserExtractVideoUrl(options.url, 25000, true);
-          if (extracted?.videoUrl) {
-            const cdnUrl = extracted.videoUrl;
-            const referer = refererCache.get(cdnUrl) || refererCache.get(options.url) || options.url;
-            logger.info({ cdnUrl: cdnUrl.slice(0, 80) }, "Browser fallback during download succeeded — downloading CDN URL");
+          const files = readdirSync(DOWNLOADS_DIR);
+          const match = files.find(
+            (f) => path.basename(f, path.extname(f)) === jobId
+              && !f.endsWith(".part")
+              && !f.endsWith(".ytdl")
+              && !f.endsWith(".cookies.txt"),
+          );
+          if (match) actualFilename = match;
+        } catch {}
+        const fp = path.join(DOWNLOADS_DIR, actualFilename);
+        const filesize = existsSync(fp) ? statSync(fp).size : null;
+        onDone(actualFilename, filesize);
+        return;
+      }
 
-            if (/\.m3u8/i.test(cdnUrl)) {
-              downloadHLS({ manifestUrl: cdnUrl, outputPath, referer, onProgress: (pct) => onProgress(pct) })
-                .then(() => { onDone(options.outputFilename, null); })
-                .catch((e) => onError(friendlyError(e.message)));
-            } else {
-              const dlArgs = [
-                "--no-warnings", "--newline", "-o", outputPath,
-                "--add-headers", `Referer:${referer}`,
-                "--add-headers", `Origin:${referer}`,
-                "-f", "best", cdnUrl,
-              ];
-              const dlProc = spawn(YTDLP_BIN, [...DOWNLOAD_ARGS, ...dlArgs]);
-              let dlStderr = "";
-              dlProc.stdout.on("data", (chunk: Buffer) => {
-                const m = chunk.toString().match(/\[download\]\s+([\d.]+)%/);
-                if (m) onProgress(Math.round(parseFloat(m[1])));
-              });
-              dlProc.stderr.on("data", (d: Buffer) => { dlStderr += d.toString(); });
-              dlProc.on("close", (c) => {
-                if (c === 0) {
-                  const fp = path.join(DOWNLOADS_DIR, options.outputFilename);
-                  onDone(options.outputFilename, existsSync(fp) ? statSync(fp).size : null);
-                } else {
-                  onError(friendlyError(dlStderr.slice(-300)));
-                }
-              });
-              dlProc.on("error", (e) => onError(`CDN download failed: ${e.message}`));
+      // Check if this error is retriable (not auth-required or DRM)
+      const errSnippet = stderrBuf.slice(-800).trim();
+      const isFatal = /DRM|Widevine|PlayReady|HTTP Error 403|HTTP Error 401|Premium|subscription required|subscribers only/i.test(errSnippet);
+      const isAuthError = /logged.in|without being logged|login required|authentication|not allow.*without/i.test(errSnippet);
+
+      // Auth error on social sites → try browser extraction fallback
+      const SOCIAL_DOMAINS = ["instagram.com", "tiktok.com", "snapchat.com"];
+      const isSocialUrl = SOCIAL_DOMAINS.some(d => options.url.includes(d));
+      if (isSocialUrl && isAuthError && !options.cookiesFile) {
+        logger.info({ url: options.url }, "Download auth error — trying browser extraction fallback");
+        (async () => {
+          try {
+            const extracted = await browserExtractVideoUrl(options.url, 25000, true);
+            if (extracted?.videoUrl) {
+              const cdnUrl = extracted.videoUrl;
+              const referer = refererCache.get(cdnUrl) || refererCache.get(options.url) || options.url;
+              logger.info({ cdnUrl: cdnUrl.slice(0, 80) }, "Browser fallback succeeded — downloading CDN URL");
+
+              if (/\.m3u8/i.test(cdnUrl)) {
+                downloadHLS({ manifestUrl: cdnUrl, outputPath, referer, onProgress: (pct) => onProgress(pct) })
+                  .then(() => { onDone(options.outputFilename, null); })
+                  .catch((e) => onError(friendlyError(e.message)));
+              } else {
+                const dlArgs = [
+                  "--no-warnings", "--newline", "-o", outputPath,
+                  "--add-headers", `Referer:${referer}`,
+                  "--add-headers", `Origin:${referer}`,
+                  "-f", "best", cdnUrl,
+                ];
+                const dlProc = spawn(YTDLP_BIN, [...DOWNLOAD_ARGS, ...dlArgs]);
+                let dlStderr = "";
+                dlProc.stdout.on("data", (chunk: Buffer) => {
+                  const m = chunk.toString().match(/\[download\]\s+([\d.]+)%/);
+                  if (m) onProgress(Math.round(parseFloat(m[1])));
+                });
+                dlProc.stderr.on("data", (d: Buffer) => { dlStderr += d.toString(); });
+                dlProc.on("close", (c) => {
+                  if (c === 0) {
+                    const fp = path.join(DOWNLOADS_DIR, options.outputFilename);
+                    onDone(options.outputFilename, existsSync(fp) ? statSync(fp).size : null);
+                  } else {
+                    onError(friendlyError(dlStderr.slice(-300)));
+                  }
+                });
+                dlProc.on("error", (e) => onError(`CDN download failed: ${e.message}`));
+              }
+              return;
             }
-            return;
+          } catch (fbErr) {
+            logger.warn({ fbErr }, "Browser download fallback failed");
           }
-        } catch (fbErr) {
-          logger.warn({ fbErr }, "Browser download fallback failed");
-        }
-        // All fallbacks exhausted
-        const platform = options.url.includes("instagram") ? "Instagram" : "this platform";
-        onError(`🔑 ${platform} requires login. Please upload your browser cookies (cookies.txt) and re-analyze to unlock downloads.`);
-      })();
-      return;
-    }
+          const platform = options.url.includes("instagram") ? "Instagram" : "this platform";
+          onError(`🔑 ${platform} requires login. Please upload your browser cookies (cookies.txt) and re-analyze to unlock downloads.`);
+        })();
+        return;
+      }
 
-    onError(friendlyError(errMsg));
-  });
+      if (isFatal) {
+        // Don't retry fatal errors
+        onError(friendlyError(errSnippet));
+        return;
+      }
 
-  proc.on("error", (err) => { onError(`Failed to start download: ${err.message}`); });
+      logger.warn({ attempt, code, errSnippet: errSnippet.slice(-100) }, "Download strategy failed — trying next");
+      tryNextStrategy();
+    });
+
+    proc.on("error", (err) => { onError(`Failed to start download: ${err.message}`); });
+  }
+
+  tryNextStrategy();
 }
+
 
 // ─── FFmpeg edit ──────────────────────────────────────────────────────────────
 export async function applyEdits(
