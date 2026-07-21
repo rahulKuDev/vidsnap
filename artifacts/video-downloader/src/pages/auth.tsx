@@ -11,6 +11,45 @@ import { toast } from "sonner";
 
 const API = "/api";
 
+// ─── INPUT COMPONENT (outside AuthPage to prevent cursor-jump bug) ────────────
+function AuthInput({
+  type = "text", icon: Icon, placeholder, value, onChange, error, right, showPass, onTogglePass,
+}: {
+  type?: string; icon: any; placeholder: string; value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  error?: string; right?: React.ReactNode;
+  showPass?: boolean; onTogglePass?: () => void;
+}) {
+  return (
+    <div>
+      <div className="relative">
+        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
+        <input
+          type={type} value={value} onChange={onChange} placeholder={placeholder} required
+          className={`w-full bg-white/[0.04] border rounded-xl pl-10 pr-${right ? "10" : "4"} py-3 text-sm text-white placeholder:text-white/25 focus:outline-none transition-all
+            ${error ? "border-red-500/70 focus:border-red-500 focus:ring-1 focus:ring-red-500/30" : "border-white/[0.08] focus:border-violet-500/70 focus:ring-1 focus:ring-violet-500/20"}`}
+        />
+        {right && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">{right}</div>
+        )}
+      </div>
+      <AnimatePresence mode="wait">
+        {error && error.trim() && (
+          <motion.p
+            initial={{ opacity: 0, height: 0, y: -4 }}
+            animate={{ opacity: 1, height: "auto", y: 0 }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-center gap-1.5 text-xs text-red-400 mt-1.5 ml-1"
+          >
+            <AlertCircle className="w-3 h-3 shrink-0" />
+            {error}
+          </motion.p>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 type Screen = "login" | "register" | "otp" | "forgot" | "forgot-sent";
 
 interface FieldErrors {
@@ -200,42 +239,6 @@ export default function AuthPage() {
     setScreen(s);
   };
 
-  // ─── INPUT COMPONENT ──────────────────────────────────────────────────────────
-  const Input = ({
-    type = "text", icon: Icon, placeholder, value, onChange, error, right,
-  }: {
-    type?: string; icon: any; placeholder: string; value: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    error?: string; right?: React.ReactNode;
-  }) => (
-    <div>
-      <div className="relative">
-        <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30 pointer-events-none" />
-        <input
-          type={type} value={value} onChange={onChange} placeholder={placeholder} required
-          className={`w-full bg-white/[0.04] border rounded-xl pl-10 pr-${right ? "10" : "4"} py-3 text-sm text-white placeholder:text-white/25 focus:outline-none transition-all
-            ${error ? "border-red-500/70 focus:border-red-500 focus:ring-1 focus:ring-red-500/30" : "border-white/[0.08] focus:border-violet-500/70 focus:ring-1 focus:ring-violet-500/20"}`}
-        />
-        {right && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2">{right}</div>
-        )}
-      </div>
-      <AnimatePresence mode="wait">
-        {error && error.trim() && (
-          <motion.p
-            initial={{ opacity: 0, height: 0, y: -4 }}
-            animate={{ opacity: 1, height: "auto", y: 0 }}
-            exit={{ opacity: 0, height: 0 }}
-            className="flex items-center gap-1.5 text-xs text-red-400 mt-1.5 ml-1"
-          >
-            <AlertCircle className="w-3 h-3 shrink-0" />
-            {error}
-          </motion.p>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-[#080810] flex items-stretch overflow-hidden">
 
@@ -379,18 +382,18 @@ export default function AuthPage() {
 
                 <form onSubmit={screen === "login" ? handleLogin : handleRegister} className="space-y-4">
                   {screen === "register" && (
-                    <Input
+                    <AuthInput
                       icon={User} placeholder="Full name" value={form.name}
                       onChange={set("name")} error={fieldErrors.name}
                     />
                   )}
 
-                  <Input
+                  <AuthInput
                     type="email" icon={Mail} placeholder="Email address" value={form.email}
                     onChange={set("email")} error={fieldErrors.email}
                   />
 
-                  <Input
+                  <AuthInput
                     type={showPass ? "text" : "password"} icon={Lock}
                     placeholder={screen === "register" ? "Password (min 6 chars)" : "Password"}
                     value={form.password} onChange={set("password")} error={fieldErrors.password}
