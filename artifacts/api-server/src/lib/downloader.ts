@@ -180,7 +180,7 @@ export function findFfmpeg(): string {
 
 // ─── arg sets ─────────────────────────────────────────────────────────────────
 const ANALYZE_BASE_ARGS = [
-  "--no-check-certificate", "--socket-timeout", "10",
+  "--no-check-certificate", "--socket-timeout", "20",
   "--no-playlist", "--no-warnings",
   "--geo-bypass",
   "--no-write-annotations", "--no-write-description",
@@ -190,7 +190,7 @@ const ANALYZE_BASE_ARGS = [
 
 const GENERIC_EXTRACTOR_ARGS = [
   "--force-generic-extractor",
-  "--no-check-certificate", "--socket-timeout", "12",
+  "--no-check-certificate", "--socket-timeout", "20",
   "--no-playlist", "--no-warnings",
   "--geo-bypass",
   "--add-headers", "Accept-Language:en-US,en;q=0.9",
@@ -198,34 +198,34 @@ const GENERIC_EXTRACTOR_ARGS = [
   "--add-headers", "Referer:https://www.google.com/",
 ];
 
-// YouTube multi-client args
-// android_vr: returns FULL format list (all resolutions: 144p – 4K)
-// This is what yt-dlp uses by default when no client is forced.
-const YT_ANDROID_VR_ARGS = [
-  "--no-check-certificate", "--socket-timeout", "12",
-  "--no-playlist", "--no-warnings",
-  "--extractor-args", "youtube:player_client=android_vr,web",
-];
-// android: good fallback, bypasses bot-detection
-const YT_ANDROID_ARGS = [
-  "--no-check-certificate", "--socket-timeout", "10",
-  "--no-playlist", "--no-warnings",
-  "--extractor-args", "youtube:player_client=android,web",
-];
+// YouTube multi-client args — ordered best-to-worst for server IPs
+// tv_embedded: least monitored, best for server/DC IPs
+// android_vr: returns FULL format list (144p – 4K)
+// android: good fallback, often bypasses bot-detection
 const YT_TV_ARGS = [
-  "--no-check-certificate", "--socket-timeout", "10",
+  "--no-check-certificate", "--socket-timeout", "20",
   "--no-playlist", "--no-warnings",
   "--extractor-args", "youtube:player_client=tv_embedded,web",
 ];
-const YT_MWEB_ARGS = [
-  "--no-check-certificate", "--socket-timeout", "10",
+const YT_ANDROID_VR_ARGS = [
+  "--no-check-certificate", "--socket-timeout", "20",
   "--no-playlist", "--no-warnings",
-  "--extractor-args", "youtube:player_client=mweb,android",
+  "--extractor-args", "youtube:player_client=android_vr,web",
+];
+const YT_ANDROID_ARGS = [
+  "--no-check-certificate", "--socket-timeout", "20",
+  "--no-playlist", "--no-warnings",
+  "--extractor-args", "youtube:player_client=android,web",
 ];
 const YT_IOS_ARGS = [
-  "--no-check-certificate", "--socket-timeout", "12",
+  "--no-check-certificate", "--socket-timeout", "20",
   "--no-playlist", "--no-warnings",
   "--extractor-args", "youtube:player_client=ios,android",
+];
+const YT_MWEB_ARGS = [
+  "--no-check-certificate", "--socket-timeout", "20",
+  "--no-playlist", "--no-warnings",
+  "--extractor-args", "youtube:player_client=mweb,android",
 ];
 
 // Known DRM/login-gated platforms — skip Layer 2+4 immediately on auth failure
@@ -246,19 +246,17 @@ function isAuthError(msg: string): boolean {
 }
 
 
-// Enhanced download args — faster, more resilient
-// NOTE: --http-chunk-size removed — causes "Error opening output files: Invalid argument"
-// on Windows (yt-dlp issue #14198). Do NOT add it back.
+// Enhanced download args — optimized for Railway/cloud server
 export const DOWNLOAD_ARGS = [
   "--no-check-certificate",
   "--geo-bypass",
-  "--socket-timeout", "30",
+  "--socket-timeout", "60",
   "--add-headers", "Accept-Language:en-US,en;q=0.9",
   "--add-headers", "User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-  "--concurrent-fragments", "16",
-  "--retries", "10",
-  "--fragment-retries", "10",
-  "--buffer-size", "64K",
+  "--concurrent-fragments", "4",
+  "--retries", "5",
+  "--fragment-retries", "5",
+  "--buffer-size", "32K",
   "--file-access-retries", "3",
 ];
 
@@ -270,16 +268,16 @@ function getExtractorArgSets(url: string): Array<{ base: string[], extra: string
   try {
     const host = new URL(url).hostname.toLowerCase().replace(/^www\./, "");
     if (host.includes("youtube.com") || host.includes("youtu.be")) {
-      // android_vr client returns the FULL format list (all resolutions 144p-4K).
-      // ANALYZE_BASE_ARGS (no override) also works — yt-dlp auto-picks android_vr.
-      // android/mweb/ios are fallbacks that bypass bot-detection but may return limited formats.
+      // tv_embedded: least monitored by YouTube, best from server/DC IPs
+      // android_vr: returns complete format list (144p–4K)
+      // android: good all-round fallback
       return [
-        { base: YT_ANDROID_VR_ARGS, extra: [] },  // android_vr = complete format list
-        { base: ANALYZE_BASE_ARGS, extra: [] },    // default yt-dlp auto-selection
+        { base: YT_TV_ARGS, extra: [] },        // Best from server IPs
+        { base: YT_ANDROID_VR_ARGS, extra: [] }, // Full format list
+        { base: ANALYZE_BASE_ARGS, extra: [] },  // yt-dlp auto-selection
         { base: YT_ANDROID_ARGS, extra: [] },
         { base: YT_IOS_ARGS, extra: [] },
         { base: YT_MWEB_ARGS, extra: [] },
-        { base: YT_TV_ARGS, extra: [] },
       ];
     }
     if (host.includes("tiktok.com")) return [
