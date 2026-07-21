@@ -1,8 +1,8 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 
-# Build tools needed for native addons
-RUN apk add --no-cache python3 make g++ curl ca-certificates openssl
+# Minimal build tools — node:22-alpine already has most things
+RUN apk add --no-cache python3 make g++
 
 RUN npm install -g pnpm@10
 
@@ -25,20 +25,14 @@ RUN pnpm run build
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM node:22-alpine AS runtime
 
-# Install ffmpeg, yt-dlp, and all required tools
+# Install runtime dependencies
 RUN apk add --no-cache \
-    python3 \
     ffmpeg \
     curl \
-    wget \
     ca-certificates \
-    openssl \
-    tzdata \
-    # Required for yt-dlp on some platforms
-    py3-pip \
-    atomicparsley
+    python3
 
-# Install latest yt-dlp binary (pinned to stable release)
+# Install latest stable yt-dlp
 RUN curl -L "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp" \
     -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp \
@@ -51,22 +45,19 @@ COPY --from=builder /app/artifacts/api-server/dist ./dist
 COPY --from=builder /app/artifacts/api-server/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 
-# Create required directories (using /tmp — ephemeral, no persistent disk needed)
+# Create required temp directories
 RUN mkdir -p /tmp/downloads /tmp/uploads /tmp/data /tmp/vidsnap-cookies
 
-# ─── Environment Defaults ─────────────────────────────────────────────────────
+# Environment defaults (Railway overrides PORT automatically)
 ENV NODE_ENV=production
-# PORT is set by Railway automatically — default 8080 if not set
 ENV PORT=8080
 ENV YTDLP_PATH=/usr/local/bin/yt-dlp
 ENV DOWNLOADS_DIR=/tmp/downloads
 ENV UPLOADS_DIR=/tmp/uploads
 ENV DB_DIR=/tmp/data
 
-# Railway uses dynamic ports — expose via env
-EXPOSE ${PORT}
+EXPOSE 8080
 
-# Health check — Railway uses this to verify the service is healthy
 HEALTHCHECK --interval=30s --timeout=15s --start-period=90s --retries=3 \
   CMD curl -f "http://localhost:${PORT:-8080}/api/health" || exit 1
 
