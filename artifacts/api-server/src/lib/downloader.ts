@@ -278,20 +278,32 @@ function getExtractorArgSets(url: string): Array<{ base: string[], extra: string
         { base: YT_MWEB_ARGS, extra: [] },
       ];
     }
-    if (host.includes("tiktok.com")) return [
-      def([
-        "--extractor-args", "tiktok:api_hostname=api19-normal-c-alisg.tiktokv.com",
-        "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
-      ]),
-      def([
-        "--extractor-args", "tiktok:api_hostname=api22-normal-c-alisg.tiktokv.com",
-        "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
-      ]),
-      def([
-        "--add-headers", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15",
-      ]),
-      def([]),
-    ];
+    if (host.includes("tiktok.com")) {
+      // Random device_id to avoid fingerprint blocks
+      const deviceId = () => String(Math.floor(Math.random() * 9e18) + 1e18);
+      return [
+        def([
+          "--extractor-args", `tiktok:api_hostname=api19-normal-c-alisg.tiktokv.com;device_id=${deviceId()}`,
+          "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
+        ]),
+        def([
+          "--extractor-args", `tiktok:api_hostname=api22-normal-c-alisg.tiktokv.com;device_id=${deviceId()}`,
+          "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
+        ]),
+        def([
+          "--extractor-args", `tiktok:api_hostname=api16-normal-c-useast1a.tiktokv.com;device_id=${deviceId()}`,
+          "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
+        ]),
+        def([
+          "--extractor-args", `tiktok:api_hostname=api22-normal-c-useast2a.tiktokv.com;device_id=${deviceId()}`,
+          "--add-headers", "User-Agent:TikTok 34.1.3 rv:341303 (iPhone; iOS 17.3.1; en_US) Cronet",
+        ]),
+        def([
+          "--add-headers", "User-Agent:Mozilla/5.0 (iPhone; CPU iPhone OS 17_3_1 like Mac OS X) AppleWebKit/605.1.15",
+        ]),
+        def([]),
+      ];
+    }
     if (host.includes("instagram.com")) return [
       def(["--add-headers", "User-Agent:Instagram 319.0.0.0.34"]),
       def(["--extractor-args", "instagram:api=v1"]),
@@ -388,7 +400,10 @@ function friendlyError(raw: string): string {
   }
   if (raw.includes("Requested format is not available"))
     return "No downloadable formats found. The video may be private, region-locked, or require login.";
-  if (raw.includes("Video unavailable") || raw.includes("not available"))
+  // TikTok-specific: IP block from India/local IPs
+  if (raw.includes("IP address is blocked") || raw.includes("blocked from accessing"))
+    return "🚫 TikTok has blocked this IP address. This happens on home/office IPs in some regions. The download will work on cloud servers (Railway/Render). Try deploying to Railway and use the hosted version.";
+  if (raw.includes("Video unavailable") || raw.includes("not available") || raw.includes("status code 0"))
     return "This video is unavailable. It may be private, deleted, or region-restricted.";
   // HTTP errors
   if (raw.includes("HTTP Error 403") || raw.includes("403 Forbidden") || raw.includes("403: Forbidden"))
