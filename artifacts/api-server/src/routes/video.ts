@@ -14,6 +14,7 @@ import {
   startDownload,
   applyEdits,
   DOWNLOADS_DIR,
+  GLOBAL_COOKIES_FILE,
 } from "../lib/downloader";
 import {
   AnalyzeVideoBody,
@@ -52,8 +53,11 @@ router.post("/video/analyze", async (req, res): Promise<void> => {
     }
   }
 
+  // Use per-request cookies first, fall back to server global cookies (YTDLP_COOKIES_B64)
+  const effectiveCookiesPath = tempCookiesPath ?? GLOBAL_COOKIES_FILE;
+
   try {
-    const info = await analyzeUrl(parsed.data.url, tempCookiesPath);
+    const info = await analyzeUrl(parsed.data.url, effectiveCookiesPath);
     res.json(info);
   } catch (err: unknown) {
     req.log.error({ err }, "Video analysis failed");
@@ -97,7 +101,8 @@ router.post("/video/download", async (req, res): Promise<void> => {
     }
   }
 
-  // Create job in DB
+  // Use per-request cookies first, fall back to server global cookies (YTDLP_COOKIES_B64)
+  const effectiveCookiesPath = cookiesFilePath ?? GLOBAL_COOKIES_FILE;
   const job = await createDownloadJob({
     id: jobId,
     url,
@@ -135,7 +140,7 @@ router.post("/video/download", async (req, res): Promise<void> => {
             quality: quality ?? undefined,
             removeWatermark: removeWatermark ?? false,
             outputFilename,
-            cookiesFile: cookiesFilePath,   // ← pass cookies to yt-dlp
+            cookiesFile: effectiveCookiesPath,   // ← per-request cookies OR global server cookies
           },
           async (progress) => {
             await updateDownloadJob(jobId, { progress });

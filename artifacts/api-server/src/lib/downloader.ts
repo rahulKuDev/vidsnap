@@ -148,6 +148,28 @@ function findYtDlp(): string {
 const YTDLP_BIN = findYtDlp();
 logger.info({ bin: YTDLP_BIN }, "yt-dlp binary resolved");
 
+// ─── Global cookies (from env var YTDLP_COOKIES_B64) ─────────────────────────
+// Set YTDLP_COOKIES_B64 in Render env vars with base64-encoded cookies.txt
+// This lets yt-dlp bypass YouTube/Instagram bot detection on the server.
+export let GLOBAL_COOKIES_FILE: string | undefined;
+(function initGlobalCookies() {
+  const b64 = process.env.YTDLP_COOKIES_B64;
+  if (!b64) return;
+  try {
+    const { writeFileSync, mkdirSync } = require("fs") as typeof import("fs");
+    const cookiesDir = "/tmp/vidsnap-cookies";
+    mkdirSync(cookiesDir, { recursive: true });
+    const cookiesPath = `${cookiesDir}/global-cookies.txt`;
+    const decoded = Buffer.from(b64, "base64").toString("utf8");
+    writeFileSync(cookiesPath, decoded, "utf8");
+    GLOBAL_COOKIES_FILE = cookiesPath;
+    logger.info({ cookiesPath }, "Global cookies file initialized from YTDLP_COOKIES_B64 env var");
+  } catch (e) {
+    logger.warn({ e }, "Failed to initialize global cookies from env var");
+  }
+})();
+
+
 // ─── ffmpeg path ──────────────────────────────────────────────────────────────
 export function findFfmpeg(): string {
   try {
